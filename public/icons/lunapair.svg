@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LunaPair">
+  <rect width="64" height="64" rx="18" fill="#EEE8FF"/>
+  <path d="M42 10c-9 3-15 11-15 21s6 18 15 21c-4 3-9 4-14 3C17 53 9 43 9 32S17 11 28 9c5-1 10 0 14 1Z" fill="#7656D6"/>
+  <circle cx="43" cy="31" r="4.5" fill="#F27C8D"/>
+  <path d="M38 43c4 4 10 4 14 0" fill="none" stroke="#7656D6" stroke-width="4" stroke-linecap="round"/>
+</svg>
