@@ -104,7 +104,7 @@ export function StatsPage() {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-1 flex-col space-y-5">
       <header>
         <h1 className="text-3xl font-bold">Статистика</h1>
         <p className="text-muted">Графики строятся только из локально сохранённых данных.</p>
@@ -112,7 +112,7 @@ export function StatsPage() {
       
       <MagicBento 
         items={bentoItems} 
-        gridClassName="grid-cols-1 md:grid-cols-4 lg:grid-cols-4" 
+        gridClassName="grid-cols-1 md:grid-cols-4 lg:grid-cols-4 flex-1" 
         enableTilt={false} 
         glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"} 
       />

@@ -54,7 +54,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1rem)] pt-[max(1.25rem,var(--safe-top))] md:pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1.5rem)] md:pt-8 lg:ml-72 lg:pb-8">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>

@@ -106,17 +106,17 @@ export function TodayPage() {
         </Button>
       </header>
 
-      <Card className="glass-panel space-y-5">
+      <div className="space-y-6 py-4">
         <CycleRing prediction={prediction} />
         <div className="text-center">
           <p className="mt-1 text-muted font-medium">{periodStatusText}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-4">
           {Object.entries(ru.phase).map(([key, label]) => (
-            <span key={key} className="rounded-2xl bg-primarySoft px-3 py-2">{label}</span>
+            <span key={key} className="rounded-2xl bg-primarySoft px-3 py-2 text-center">{label}</span>
           ))}
         </div>
-      </Card>
+      </div>
 
       <section className="grid gap-3 md:grid-cols-5">
         <Button className="soft-pulse" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
@@ -135,7 +135,7 @@ export function TodayPage() {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-3">
+    <div className="p-1">
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="mt-1 font-semibold">{value}</dd>
     </div>
