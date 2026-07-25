@@ -25,6 +25,7 @@
     "date-fns": "latest",
     "dexie": "latest",
     "framer-motion": "latest",
+    "gsap": "^3.15.0",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",

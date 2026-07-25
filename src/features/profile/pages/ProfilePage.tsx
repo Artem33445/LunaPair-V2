@@ -15,6 +15,7 @@ import {
   permissionMeta,
   type PartnerPermissionKey
 } from "../../partner/domain/partnerPermissions";
+import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 
 const sectionTitles = {
   cycle: "Цикл и прогноз",
@@ -101,15 +102,12 @@ export function ProfilePage() {
     void setRole("tracker").then(() => navigate("/profile"));
   }
 
-  return (
-    <div className="space-y-5">
-      <header>
-        <h1 className="text-3xl font-bold">Профиль</h1>
-        <p className="text-muted">Настройки, приватность и резервная копия.</p>
-      </header>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="space-y-4">
+  const topItems: BentoItem[] = [
+    {
+      id: "main-settings",
+      className: "h-full",
+      content: (
+        <div className="space-y-4">
           <h2 className="text-xl font-bold">Основное</h2>
           {trackerMode ? (
             <div>
@@ -128,35 +126,122 @@ export function ProfilePage() {
             <Button variant={profile.theme === "system" ? "primary" : "outline"} onClick={() => void setTheme("system")}>Система</Button>
           </div>
           <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">{sync.message}</p>
-        </Card>
+        </div>
+      )
+    }
+  ];
 
-        {trackerMode ? (
-          <Card className="space-y-4">
-            <h2 className="text-xl font-bold">Резервная копия</h2>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => {
-                const json = exportJson();
-                if (json) downloadBackup(json);
-              }}><Download className="h-4 w-4" />Экспорт JSON</Button>
-              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-2xl border border-border px-4 font-semibold hover:bg-primarySoft">
-                <Upload className="h-4 w-4" />
-                Импорт JSON
-                <Input className="sr-only" type="file" accept="application/json" onChange={(event) => void onImport(event.target.files?.[0])} />
-              </label>
-              <Button variant="danger" onClick={() => {
-                if (confirm("Полностью сбросить LunaPair? Будут удалены профиль, циклы, дневник, настройки, демо-режим, история ассистента и экран приветствия. После этого приложение начнётся заново.")) void clearAll();
-              }}><RotateCcw className="h-4 w-4" />Сбросить приложение</Button>
-            </div>
-            <p className="text-sm text-muted">Партнёрский режим не может экспортировать, импортировать или удалять данные девушки.</p>
-          </Card>
-        ) : (
-          <Card className="space-y-3">
-            <h2 className="text-xl font-bold">Только просмотр</h2>
-            <p className="text-sm text-muted">В партнёрском режиме скрыты экспорт, импорт, сброс приложения и любые действия записи.</p>
-            <Button onClick={returnToTracker}><LogOut className="h-4 w-4" />Вернуться в профиль девушки</Button>
-          </Card>
-        )}
+  if (trackerMode) {
+    topItems.push({
+      id: "backup",
+      className: "h-full",
+      content: (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Резервная копия</h2>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => {
+              const json = exportJson();
+              if (json) downloadBackup(json);
+            }}><Download className="h-4 w-4" />Экспорт JSON</Button>
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-2xl border border-border px-4 font-semibold hover:bg-primarySoft">
+              <Upload className="h-4 w-4" />
+              Импорт JSON
+              <Input className="sr-only" type="file" accept="application/json" onChange={(event) => void onImport(event.target.files?.[0])} />
+            </label>
+            <Button variant="danger" onClick={() => {
+              if (confirm("Полностью сбросить LunaPair? Будут удалены профиль, циклы, дневник, настройки, демо-режим, история ассистента и экран приветствия. После этого приложение начнётся заново.")) void clearAll();
+            }}><RotateCcw className="h-4 w-4" />Сбросить приложение</Button>
+          </div>
+          <p className="text-sm text-muted">Партнёрский режим не может экспортировать, импортировать или удалять данные девушки.</p>
+        </div>
+      )
+    });
+  } else {
+    topItems.push({
+      id: "partner-mode",
+      className: "h-full",
+      content: (
+        <div className="space-y-3">
+          <h2 className="text-xl font-bold">Только просмотр</h2>
+          <p className="text-sm text-muted">В партнёрском режиме скрыты экспорт, импорт, сброс приложения и любые действия записи.</p>
+          <Button onClick={returnToTracker}><LogOut className="h-4 w-4" />Вернуться в профиль девушки</Button>
+        </div>
+      )
+    });
+  }
+
+  const supportItems: BentoItem[] = [];
+  if (trackerMode) {
+    supportItems.push({
+      id: "support-prefs",
+      content: (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Предпочтения поддержки</h2>
+          <p className="text-sm text-muted">Эти подсказки помогут партнёру предлагать помощь бережно, без давления.</p>
+          <div>
+            <FieldLabel htmlFor="support">Что обычно помогает</FieldLabel>
+            <Textarea
+              id="support"
+              value={supportDraft.preferredSupport.join("\n")}
+              onChange={(event) => setSupportDraft({ ...supportDraft, preferredSupport: event.target.value.split("\n") })}
+              placeholder="Например: предложить чай, взять на себя ужин, дать тишину"
+            />
+          </div>
+          <div>
+            <FieldLabel htmlFor="avoid">Чего лучше избегать</FieldLabel>
+            <Input id="avoid" value={supportDraft.avoidWhenPossible} onChange={(event) => setSupportDraft({ ...supportDraft, avoidWhenPossible: event.target.value })} />
+          </div>
+          <div>
+            <FieldLabel htmlFor="reassurance">Фраза поддержки</FieldLabel>
+            <Input id="reassurance" value={supportDraft.reassuranceText} onChange={(event) => setSupportDraft({ ...supportDraft, reassuranceText: event.target.value })} />
+          </div>
+          <Button onClick={saveSupportDraft}>Сохранить предпочтения</Button>
+        </div>
+      )
+    });
+    
+    supportItems.push({
+      id: "private-markers",
+      content: (
+        <>
+          <h2 className="text-xl font-bold">Приватные маркеры в твоём календаре</h2>
+          <label className="mt-4 flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
+            <span>
+              <span className="block font-semibold">Скрывать приватные маркеры в календаре</span>
+              <span className="text-sm text-muted">Маркер показывает только факт приватной записи, без подробностей.</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={profile.hidePrivateMarkers ?? false}
+              onChange={(event) => void setHidePrivateMarkers(event.target.checked)}
+              className="h-5 w-5 accent-primary"
+            />
+          </label>
+        </>
+      )
+    });
+  }
+
+  const aboutItem: BentoItem = {
+    id: "about",
+    className: "bg-primarySoft/30",
+    content: (
+      <div className="space-y-3">
+        <h2 className="text-xl font-bold">О приложении</h2>
+        <p className="text-muted">LunaPair помогает вести календарь цикла и записывать самочувствие. Расчёты основаны на введённых данных и являются приблизительными. Приложение не является медицинским устройством и не заменяет консультацию специалиста.</p>
+        <p className="text-sm text-muted">{ru.medicalWarning}</p>
       </div>
+    )
+  };
+
+  return (
+    <div className="space-y-5">
+      <header>
+        <h1 className="text-3xl font-bold">Профиль</h1>
+        <p className="text-muted">Настройки, приватность и резервная копия.</p>
+      </header>
+
+      <MagicBento gridClassName="grid-cols-1 lg:grid-cols-2" items={topItems} enableTilt={false} enableMagnetism={false} />
 
       {trackerMode ? (
         <PartnerAccessSettings
@@ -179,54 +264,11 @@ export function ProfilePage() {
         />
       ) : null}
 
-      {trackerMode ? (
-        <Card className="space-y-4">
-          <h2 className="text-xl font-bold">Предпочтения поддержки</h2>
-          <p className="text-sm text-muted">Эти подсказки помогут партнёру предлагать помощь бережно, без давления.</p>
-          <div>
-            <FieldLabel htmlFor="support">Что обычно помогает</FieldLabel>
-            <Textarea
-              id="support"
-              value={supportDraft.preferredSupport.join("\n")}
-              onChange={(event) => setSupportDraft({ ...supportDraft, preferredSupport: event.target.value.split("\n") })}
-              placeholder="Например: предложить чай, взять на себя ужин, дать тишину"
-            />
-          </div>
-          <div>
-            <FieldLabel htmlFor="avoid">Чего лучше избегать</FieldLabel>
-            <Input id="avoid" value={supportDraft.avoidWhenPossible} onChange={(event) => setSupportDraft({ ...supportDraft, avoidWhenPossible: event.target.value })} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="reassurance">Фраза поддержки</FieldLabel>
-            <Input id="reassurance" value={supportDraft.reassuranceText} onChange={(event) => setSupportDraft({ ...supportDraft, reassuranceText: event.target.value })} />
-          </div>
-          <Button onClick={saveSupportDraft}>Сохранить предпочтения</Button>
-        </Card>
+      {trackerMode && supportItems.length > 0 ? (
+        <MagicBento gridClassName="grid-cols-1 md:grid-cols-2" items={supportItems} enableTilt={false} enableMagnetism={false} />
       ) : null}
 
-      {trackerMode ? (
-        <Card>
-          <h2 className="text-xl font-bold">Приватные маркеры в твоём календаре</h2>
-          <label className="mt-4 flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
-            <span>
-              <span className="block font-semibold">Скрывать приватные маркеры в календаре</span>
-              <span className="text-sm text-muted">Маркер показывает только факт приватной записи, без подробностей.</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={profile.hidePrivateMarkers ?? false}
-              onChange={(event) => void setHidePrivateMarkers(event.target.checked)}
-              className="h-5 w-5 accent-primary"
-            />
-          </label>
-        </Card>
-      ) : null}
-
-      <Card className="space-y-3">
-        <h2 className="text-xl font-bold">О приложении</h2>
-        <p className="text-muted">LunaPair помогает вести календарь цикла и записывать самочувствие. Расчёты основаны на введённых данных и являются приблизительными. Приложение не является медицинским устройством и не заменяет консультацию специалиста.</p>
-        <p className="text-sm text-muted">{ru.medicalWarning}</p>
-      </Card>
+      <MagicBento gridClassName="grid-cols-1" items={[aboutItem]} enableTilt={false} enableMagnetism={false} />
     </div>
   );
 }
@@ -259,14 +301,22 @@ function PartnerAccessSettings({
   onDisconnect: () => void;
 }) {
   return (
-    <Card className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold">Что увидит партнёр</h2>
-          <p className="mt-2 text-sm text-muted">Ты можешь изменить или отозвать доступ в любой момент.</p>
-        </div>
-        <Button onClick={onPreview}><Eye className="h-4 w-4" />Посмотреть глазами партнёра</Button>
-      </div>
+    <MagicBento
+      gridClassName="grid-cols-1"
+      enableTilt={false}
+      enableMagnetism={false}
+      items={[{
+        id: "partner-settings",
+        className: "bg-primarySoft/30",
+        content: (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold">Что увидит партнёр</h2>
+                <p className="mt-2 text-sm text-muted">Ты можешь изменить или отозвать доступ в любой момент.</p>
+              </div>
+              <Button onClick={onPreview}><Eye className="h-4 w-4" />Посмотреть глазами партнёра</Button>
+            </div>
 
       <section className="grid gap-3 rounded-card border border-border bg-card/80 p-4 md:grid-cols-[1fr_auto]">
         <div>
@@ -367,6 +417,9 @@ function PartnerAccessSettings({
           </section>
         );
       })}
-    </Card>
+          </div>
+        )
+      }]}
+    />
   );
 }

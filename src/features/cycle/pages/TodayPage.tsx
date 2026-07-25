@@ -10,6 +10,7 @@ import { useAppStore } from "../../../stores/appStore";
 import { CycleRing } from "../components/CycleRing";
 import { dailyAdvice, daysUntil, phaseHint, pluralDays, predictCycle } from "../domain/cycleCalculations";
 import { personalInsight } from "../domain/cycleReports";
+import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 
 export function TodayPage() {
   const { profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
@@ -25,6 +26,69 @@ export function TodayPage() {
   const latest = [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
   const periodActive = latest && !latest.endDate;
   const name = profile?.name.trim();
+
+  const bentoItems: BentoItem[] = [
+    {
+      id: "state",
+      label: "Состояние дня",
+      className: "lg:row-span-2",
+      content: todayLog ? (
+        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <Info label="Настроение" value={todayLog.mood ? ru.mood[todayLog.mood] : "Не выбрано"} />
+          <Info label="Самочувствие" value={todayLog.wellbeing ? ru.wellbeing[todayLog.wellbeing] : "Нет данных"} />
+          <Info label="Энергия" value={todayLog.energyLevel ? ru.energy[todayLog.energyLevel] : todayLog.energy !== undefined ? `${todayLog.energy}/10` : "Нет данных"} />
+          <Info label="Боль" value={`${todayLog.painLevel ?? todayLog.pain ?? 0}/10`} />
+          <Info label="Выделения" value={todayLog.flow ? ru.flow[todayLog.flow] : "Нет данных"} />
+          <Info label="Симптомы" value={`${todayLog.symptoms.length}`} />
+        </dl>
+      ) : (
+        <p className="mt-4 rounded-2xl bg-primarySoft p-4 text-sm text-muted">Сегодня записей пока нет. Добавь самочувствие за несколько секунд.</p>
+      )
+    },
+    {
+      id: "dates",
+      label: "Ближайшие даты",
+      content: (
+        <>
+          <dl className="mt-4 space-y-3 text-sm">
+            <Info label="Следующие месячные" value={format(parseISO(prediction.predictedNextPeriodStart), "d MMMM", { locale: localeRu })} />
+            <Info label="Ожидаемый диапазон" value={`${format(parseISO(prediction.uncertaintyStart), "d MMM", { locale: localeRu })} — ${format(parseISO(prediction.uncertaintyEnd), "d MMM", { locale: localeRu })}`} />
+            <Info label="Фертильное окно" value={`${format(parseISO(prediction.fertileWindowStart), "d MMM", { locale: localeRu })} — ${format(parseISO(prediction.fertileWindowEnd), "d MMM", { locale: localeRu })}`} />
+            <Info label="Овуляция" value={format(parseISO(prediction.predictedOvulationDate), "d MMMM", { locale: localeRu })} />
+          </dl>
+          <div className="mt-4 rounded-2xl bg-primarySoft/30 p-3">
+            <p className="text-xs font-semibold text-muted">Прогноз вперёд</p>
+            <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
+              {prediction.futureProjections.slice(1, 4).map((projection) => (
+                <span key={projection.index} className="rounded-xl border border-border/50 bg-background/50 px-3 py-2 text-center">
+                  {format(parseISO(projection.predictedStartDate), "d MMM", { locale: localeRu })}
+                </span>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-muted opacity-70">{ru.medicalWarning}</p>
+        </>
+      )
+    },
+    {
+      id: "feeling",
+      label: "Возможное самочувствие",
+      content: (
+        <>
+          <p className="mt-2 text-sm text-muted">{phaseHint(prediction.currentPhase)}</p>
+          <p className="mt-2 text-xs text-muted">{personalInsight(dailyLogs, prediction.cycleDay)}</p>
+        </>
+      )
+    },
+    {
+      id: "advice",
+      label: "Совет дня",
+      className: "lg:col-span-2",
+      content: (
+        <p className="mt-2 text-sm text-muted">{dailyAdvice(prediction.currentPhase)}</p>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-5">
@@ -64,56 +128,7 @@ export function TodayPage() {
         <Button variant="outline" onClick={() => navigate("/assistant")}><MessageCircle className="h-4 w-4" />Спросить Luna</Button>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <h2 className="text-lg font-bold">Состояние дня</h2>
-          {todayLog ? (
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-              <Info label="Настроение" value={todayLog.mood ? ru.mood[todayLog.mood] : "Не выбрано"} />
-              <Info label="Самочувствие" value={todayLog.wellbeing ? ru.wellbeing[todayLog.wellbeing] : "Нет данных"} />
-              <Info label="Энергия" value={todayLog.energyLevel ? ru.energy[todayLog.energyLevel] : todayLog.energy !== undefined ? `${todayLog.energy}/10` : "Нет данных"} />
-              <Info label="Боль" value={`${todayLog.painLevel ?? todayLog.pain ?? 0}/10`} />
-              <Info label="Выделения" value={todayLog.flow ? ru.flow[todayLog.flow] : "Нет данных"} />
-              <Info label="Симптомы" value={`${todayLog.symptoms.length}`} />
-            </dl>
-          ) : (
-            <p className="mt-4 rounded-2xl bg-primarySoft p-4 text-sm text-muted">Сегодня записей пока нет. Добавь самочувствие за несколько секунд.</p>
-          )}
-        </Card>
-
-        <Card>
-          <h2 className="text-lg font-bold">Ближайшие даты</h2>
-          <dl className="mt-4 space-y-3 text-sm">
-            <Info label="Следующие месячные" value={format(parseISO(prediction.predictedNextPeriodStart), "d MMMM", { locale: localeRu })} />
-            <Info label="Ожидаемый диапазон" value={`${format(parseISO(prediction.uncertaintyStart), "d MMM", { locale: localeRu })} — ${format(parseISO(prediction.uncertaintyEnd), "d MMM", { locale: localeRu })}`} />
-            <Info label="Фертильное окно" value={`${format(parseISO(prediction.fertileWindowStart), "d MMM", { locale: localeRu })} — ${format(parseISO(prediction.fertileWindowEnd), "d MMM", { locale: localeRu })}`} />
-            <Info label="Овуляция" value={format(parseISO(prediction.predictedOvulationDate), "d MMMM", { locale: localeRu })} />
-          </dl>
-          <div className="mt-4 rounded-2xl bg-primarySoft p-3">
-            <p className="text-xs font-semibold text-muted">Прогноз вперёд</p>
-            <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
-              {prediction.futureProjections.slice(1, 4).map((projection) => (
-                <span key={projection.index} className="rounded-xl border border-border bg-card/70 px-3 py-2">
-                  {format(parseISO(projection.predictedStartDate), "d MMM", { locale: localeRu })}
-                </span>
-              ))}
-            </div>
-          </div>
-          <p className="mt-4 text-xs text-muted">{ru.medicalWarning}</p>
-        </Card>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="bg-primarySoft shadow-none">
-          <h2 className="font-bold">Возможное самочувствие</h2>
-          <p className="mt-2 text-sm text-muted">{phaseHint(prediction.currentPhase)}</p>
-          <p className="mt-2 text-xs text-muted">{personalInsight(dailyLogs, prediction.cycleDay)}</p>
-        </Card>
-        <Card className="bg-primarySoft shadow-none">
-          <h2 className="font-bold">Совет дня</h2>
-          <p className="mt-2 text-sm text-muted">{dailyAdvice(prediction.currentPhase)}</p>
-        </Card>
-      </div>
+      <MagicBento items={bentoItems} glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"} />
     </div>
   );
 }

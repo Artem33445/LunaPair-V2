@@ -9,6 +9,7 @@ import { cn } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
 import { getCalendarDayInfo } from "../domain/cycleCalculations";
 import { DayEditor } from "../../daily-log/components/DayEditor";
+import { MagicBento } from "../../../components/ui/MagicBento";
 
 const phaseAccent = {
   menstrual: "bg-[hsl(var(--phase-menstrual)/0.7)]",
@@ -35,34 +36,21 @@ export function CalendarPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Календарь</h1>
-            <span
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primarySoft text-primary"
-              title="Фазы и даты рассчитываются приблизительно на основании введённых данных. Они не являются медицинским прогнозом"
-            >
-              <Info className="h-5 w-5" />
-            </span>
-          </div>
-          <p className="text-muted">Все фазы и прогнозы приблизительны.</p>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button aria-label="Предыдущий месяц" size="icon" variant="outline" onClick={() => setMonth(addMonths(month, -1))}>
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <Button variant="outline" onClick={goToday}>Сегодня</Button>
-          <Button aria-label="Следующий месяц" size="icon" variant="outline" onClick={() => setMonth(addMonths(month, 1))}>
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
-      <Card className="overflow-visible">
+    <div className="flex flex-1 flex-col">
+      <Card className="flex-1 flex flex-col overflow-visible pb-2">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-bold capitalize tracking-normal">{format(month, "LLLL yyyy", { locale: localeRu })}</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <h2 className="text-2xl font-bold capitalize tracking-normal">{format(month, "LLLL yyyy", { locale: localeRu })}</h2>
+            <div className="flex items-center gap-1">
+              <Button aria-label="Предыдущий месяц" size="icon" variant="outline" className="h-8 w-8" onClick={() => setMonth(addMonths(month, -1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="h-8 px-3 text-xs" onClick={goToday}>Сегодня</Button>
+              <Button aria-label="Следующий месяц" size="icon" variant="outline" className="h-8 w-8" onClick={() => setMonth(addMonths(month, 1))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           <div className="relative">
             <Button aria-expanded={legendOpen} variant="ghost" onClick={() => setLegendOpen((open) => !open)}>
               Обозначения
@@ -75,8 +63,12 @@ export function CalendarPage() {
             <span key={day} className={cn((day === "Сб" || day === "Вс") && "text-[hsl(var(--calendar-weekend-text))]")}>{day}</span>
           ))}
         </div>
-        <div className="mt-2 grid grid-cols-7 gap-1.5 sm:gap-2">
-          {days.map((day) => {
+        <MagicBento
+          gridClassName="mt-2 grid-cols-7 grid-rows-6 gap-1.5 sm:gap-2 flex-1 min-h-[350px]"
+          enableTilt={true}
+          enableMagnetism={true}
+          glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"}
+          items={days.map((day) => {
             const date = format(day, "yyyy-MM-dd");
             const info = getCalendarDayInfo(date, cycles, profile?.averageCycleLength, profile?.averagePeriodLength);
             const log = dailyLogs.find((item) => item.date === date);
@@ -84,37 +76,46 @@ export function CalendarPage() {
             const selected = selectedDate === date;
             const todayDate = isSameDay(day, today);
             const weekend = day.getDay() === 0 || day.getDay() === 6;
-            return (
-              <button
-                key={date}
-                className={cn(
-                  "group relative isolate aspect-square lg:aspect-[3/2] overflow-hidden rounded-xl border p-1 text-sm transition-all duration-200 active:scale-[0.95] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-visible:ring-2 focus-visible:ring-[hsl(var(--calendar-selected-ring))]",
-                  "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
-                  weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
-                  isSameMonth(day, month) ? "border-border" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-70",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
-                  selected && "scale-[1.03] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]"
-                )}
-                onClick={() => setSelectedDate(date)}
-                aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
-              >
-                <span aria-hidden className={cn("absolute inset-x-2 top-1 h-0.5 rounded-full", phaseAccent[info.phase])} />
-                {weekend ? <span aria-hidden className="absolute inset-x-2 top-2.5 h-px rounded-full bg-warning/45" /> : null}
-                {info.isFertile ? <span aria-hidden className="absolute inset-x-1.5 bottom-1.5 h-1 rounded-full bg-[hsl(var(--phase-fertile)/0.35)]" /> : null}
-                {info.isPredictedPeriod && !info.isActualPeriod ? (
-                  <span aria-hidden className="absolute inset-1.5 rounded-xl border border-dashed border-coral/70 bg-[hsl(var(--coral)/0.08)]" />
-                ) : null}
-                {info.isActualPeriod ? <span aria-hidden className="absolute inset-1 rounded-xl bg-coral/20 ring-1 ring-coral/35" /> : null}
-                {info.isOvulation ? <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--phase-ovulation))] shadow-[0_0_0_3px_hsl(var(--phase-ovulation)/0.2)]" /> : null}
-                <span className={cn("relative z-10 font-semibold", info.isActualPeriod && "text-coral")}>{format(day, "d")}</span>
-                {todayDate ? <span aria-hidden className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /> : null}
-                {log ? <span className="absolute bottom-1 left-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary" title="Есть запись" /> : null}
-                {hasPrivate ? <Sparkles className="absolute right-1 top-4 z-10 h-3.5 w-3.5 text-primary" aria-label="Есть приватная запись" /> : null}
-              </button>
-            );
+            
+            return {
+              id: date,
+              className: cn(
+                "group relative isolate !min-h-0 !p-0 overflow-hidden rounded-xl border transition-all duration-200 active:scale-[0.95] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
+                "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
+                weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
+                isSameMonth(day, month) ? "border-border" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-70",
+                todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
+                selected && "scale-[1.03] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]"
+              ),
+              content: (
+                <button
+                  onClick={() => setSelectedDate(date)}
+                  className="absolute inset-0 flex h-full w-full items-center justify-center outline-none"
+                  aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
+                >
+                  <span aria-hidden className={cn("absolute inset-x-2 top-1 h-0.5 rounded-full", phaseAccent[info.phase])} />
+                  {weekend ? <span aria-hidden className="absolute inset-x-2 top-2.5 h-px rounded-full bg-warning/45" /> : null}
+                  {info.isFertile ? <span aria-hidden className="absolute inset-x-1.5 bottom-1.5 h-1 rounded-full bg-[hsl(var(--phase-fertile)/0.35)]" /> : null}
+                  {info.isPredictedPeriod && !info.isActualPeriod ? (
+                    <span aria-hidden className="absolute inset-1.5 rounded-xl border border-dashed border-coral/70 bg-[hsl(var(--coral)/0.08)]" />
+                  ) : null}
+                  {info.isActualPeriod ? <span aria-hidden className="absolute inset-1 rounded-xl bg-coral/20 ring-1 ring-coral/35" /> : null}
+                  {info.isOvulation ? <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--phase-ovulation))] shadow-[0_0_0_3px_hsl(var(--phase-ovulation)/0.2)]" /> : null}
+                  
+                  <span className={cn("relative z-10 text-sm font-semibold", info.isActualPeriod && "text-coral")}>{format(day, "d")}</span>
+                  
+                  {todayDate ? <span aria-hidden className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /> : null}
+                  {log ? <span className="absolute bottom-1 left-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary" title="Есть запись" /> : null}
+                  {hasPrivate ? <Sparkles className="absolute right-1 top-4 z-10 h-3.5 w-3.5 text-primary" aria-label="Есть приватная запись" /> : null}
+                </button>
+              )
+            };
           })}
+        />
+        <div className="mt-4 flex flex-col gap-1 shrink-0">
+          <p className="text-xs text-muted">{ru.fertileWarning}</p>
+          <p className="text-xs text-muted">Все фазы и прогнозы рассчитываются приблизительно.</p>
         </div>
-        <p className="mt-4 text-xs text-muted">{ru.fertileWarning}</p>
       </Card>
 
       {selectedDate ? (
