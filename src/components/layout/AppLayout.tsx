@@ -37,8 +37,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {!disableAnimatedBg && (
         <div className="fixed inset-0 -z-10 hidden lg:block overflow-hidden pointer-events-none">
           <LightPillar
-            topColor={theme === "light" ? "#f3edf5" : "#b03ae2"}
-            bottomColor={theme === "light" ? "#ffffff" : "#c43cf9"}
+            topColor={theme === "light" ? "#e0c3fc" : "#b03ae2"}
+            bottomColor={theme === "light" ? "#ffd1ff" : "#c43cf9"}
             intensity={0.8}
             rotationSpeed={0.7}
             glowAmount={0.001}

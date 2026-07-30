@@ -4,16 +4,16 @@
 
 :root {
   color-scheme: light;
-  --background: 270 29% 97%;
+  --background: 280 40% 98%;
   --card: 0 0% 100%;
-  --elevated: 270 35% 99%;
-  --primary: 254 62% 59%;
-  --primary-soft: 257 100% 95%;
+  --elevated: 280 30% 99%;
+  --primary: 280 65% 60%;
+  --primary-soft: 280 80% 96%;
   --coral: 351 82% 72%;
   --peach: 15 100% 81%;
-  --text: 264 16% 15%;
-  --muted: 273 7% 45%;
-  --border: 274 24% 92%;
+  --text: 280 30% 12%;
+  --muted: 280 15% 38%;
+  --border: 280 25% 90%;
   --success: 151 33% 46%;
   --warning: 34 65% 56%;
   --phase-menstrual: 353 82% 75%;
@@ -23,9 +23,9 @@
   --phase-luteal: 18 59% 76%;
   --calendar-day-bg: 0 0% 100%;
   --calendar-weekend-bg: 38 100% 97%;
-  --calendar-day-text: 264 16% 15%;
-  --calendar-weekend-text: 24 48% 38%;
-  --calendar-outside-month-text: 273 7% 64%;
+  --calendar-day-text: 280 30% 12%;
+  --calendar-weekend-text: 24 48% 35%;
+  --calendar-outside-month-text: 280 15% 55%;
   --calendar-hover-border: 254 62% 70%;
   --calendar-today-ring: 254 62% 59%;
   --calendar-selected-ring: 351 82% 72%;
