@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { useAppStore } from "../../stores/appStore";
 import { Button } from "../ui/button";
 import { VisualEffects } from "./VisualEffects";
+import LightPillar from "../ui/LightPillar";
 
 const trackerNav = [
   { to: "/today", label: "Сегодня", icon: Home, trackerOnly: true },
@@ -26,11 +27,30 @@ const partnerNav = [
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const role = useAppStore((state) => state.profile?.role);
+  const theme = useAppStore((state) => state.profile?.theme);
+  const disableAnimatedBg = useAppStore((state) => state.profile?.disableAnimatedBackground);
   const navigate = useNavigate();
   const items = role === "partner" ? partnerNav : trackerNav;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell relative">
+      {!disableAnimatedBg && (
+        <div className="fixed inset-0 -z-10 hidden lg:block overflow-hidden pointer-events-none">
+          <LightPillar
+            topColor={theme === "light" ? "#f3edf5" : "#b03ae2"}
+            bottomColor={theme === "light" ? "#ffffff" : "#c43cf9"}
+            intensity={0.8}
+            rotationSpeed={0.7}
+            glowAmount={0.001}
+            pillarWidth={5.9}
+            pillarHeight={0.4}
+            noiseIntensity={0.5}
+            pillarRotation={85}
+            interactive={false}
+            mixBlendMode="normal"
+          />
+        </div>
+      )}
       <VisualEffects />
       <aside className="glass-panel fixed left-0 top-0 z-30 hidden h-dvh w-72 border-r border-border p-5 pt-[max(1.25rem,var(--safe-top))] lg:block">
         <div className="mb-8 flex items-center gap-3">
@@ -59,12 +79,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-[max(0.75rem,var(--safe-left))] pb-[max(0.5rem,var(--safe-bottom))] pt-2 backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 px-3 pb-safe pt-2 backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 items-center gap-1">
           <MobileItem to={role === "partner" ? "/partner" : "/today"} label="Сегодня" icon={Home} />
           <MobileItem to={role === "partner" ? "/partner/calendar" : "/calendar"} label="Календарь" icon={CalendarDays} />
           <button
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-soft transition-all duration-200 active:scale-[0.95] hover:brightness-105"
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-soft transition-colors duration-200 hover:brightness-105"
             onClick={() => navigate(role === "partner" ? "/partner/support" : "/log")}
             aria-label={role === "partner" ? "Поддержка" : "Добавить"}
           >
@@ -114,7 +134,7 @@ function MobileItem({
       to={to}
       end={to === "/partner" || to === "/today"}
       className={({ isActive }) =>
-        cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition-all duration-200 active:scale-[0.95]", isActive ? "text-primary" : "text-muted")
+        cn("flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl text-[11px] font-semibold transition-colors duration-200", isActive ? "text-primary" : "text-muted")
       }
     >
       <Icon className="h-5 w-5" />
