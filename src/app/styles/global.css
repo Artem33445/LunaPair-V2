@@ -115,7 +115,7 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(circle at var(--cursor-x) var(--cursor-y), hsl(var(--primary) / 0.12), transparent 18rem);
+  background: radial-gradient(circle at var(--cursor-x) var(--cursor-y), hsl(var(--primary) / 0.12), transparent 10rem);
 }
 
 #root {

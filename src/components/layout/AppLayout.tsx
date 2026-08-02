@@ -4,7 +4,6 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAppStore } from "../../stores/appStore";
 import { Button } from "../ui/button";
-import { VisualEffects } from "./VisualEffects";
 // @ts-expect-error LightPillar doesn't have types
 import LightPillar from "../ui/LightPillar";
 
@@ -52,7 +51,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           />
         </div>
       )}
-      <VisualEffects />
       <aside className="glass-panel fixed left-0 top-0 z-30 hidden h-dvh w-72 border-r border-border p-5 pt-[max(1.25rem,var(--safe-top))] lg:block">
         <div className="mb-8 flex items-center gap-3">
           <img src="/icons/lunapair.svg" alt="" className="h-11 w-11 rounded-2xl" />

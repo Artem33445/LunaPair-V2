@@ -14,6 +14,7 @@ import { CycleHistoryPage } from "../features/cycle/pages/CycleHistoryPage";
 import { LogPage } from "../features/daily-log/pages/LogPage";
 import { StatsPage } from "../features/insights/pages/StatsPage";
 import { ProfilePage } from "../features/profile/pages/ProfilePage";
+import { VisualEffects } from "../components/layout/VisualEffects";
 import { PartnerPage } from "../features/partner/pages/PartnerPage";
 import { AssistantPage } from "../features/assistant/pages/AssistantPage";
 import { Card } from "../components/ui/card";
@@ -59,6 +60,7 @@ export function App() {
   if (!profile?.onboardingCompleted) {
     return (
       <>
+        <VisualEffects />
         <OnboardingPage />
         <AppToast />
       </>
@@ -70,6 +72,7 @@ export function App() {
 
   return (
     <>
+      <VisualEffects />
       <AppLayout>
         <Routes>
           <Route path="/" element={<Navigate to={profile.role === "partner" ? "/partner" : "/today"} replace />} />
