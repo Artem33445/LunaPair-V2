@@ -72,6 +72,23 @@
   box-sizing: border-box;
 }
 
+/* Custom Cursors */
+html, body {
+  cursor: url('/cursor.svg') 6 4, auto;
+}
+
+button, 
+a, 
+select,
+input[type="submit"], 
+input[type="reset"], 
+input[type="checkbox"], 
+input[type="radio"],
+.cursor-pointer,
+[role="button"] {
+  cursor: url('/cursor-pointer.svg') 6 4, pointer;
+}
+
 html {
   height: 100%;
   width: 100%;
