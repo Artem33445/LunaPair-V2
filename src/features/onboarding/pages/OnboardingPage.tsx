@@ -11,7 +11,7 @@ import type { ThemePreference, UserRole } from "../../../types";
 
 import { loginWithGoogle } from "../../../lib/firebase";
 
-type Stage = "splash" | "auth" | "role" | "tracker" | "partner";
+type Stage = "splash" | "welcome" | "auth" | "role" | "tracker" | "partner";
 
 const today = todayIso();
 
@@ -35,8 +35,8 @@ export function OnboardingPage() {
     if (stage !== "splash") return;
     const timer = window.setTimeout(() => {
       localStorage.setItem("lunapair-splash", "seen");
-      setStage("auth");
-    }, 1200);
+      setStage("welcome");
+    }, 2000);
     return () => window.clearTimeout(timer);
   }, [stage]);
 
@@ -132,11 +132,21 @@ export function OnboardingPage() {
   if (stage === "splash") {
     return (
       <main className="onboarding-screen app-safe-area grid place-items-center py-5">
+        <motion.section initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="text-center">
+          <img src="/icons/icon-192.svg" alt="LunaPair" className="mx-auto h-28 w-28 rounded-[2rem] shadow-soft" />
+        </motion.section>
+      </main>
+    );
+  }
+
+  if (stage === "welcome") {
+    return (
+      <main className="onboarding-screen app-safe-area grid place-items-center py-5">
         <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="text-center">
           <img src="/icons/icon-192.svg" alt="LunaPair" className="mx-auto h-24 w-24 rounded-[2rem] shadow-soft" />
           <h1 className="mt-6 text-4xl font-bold">LunaPair</h1>
           <p className="mt-3 text-muted">Цикл, забота и понимание — в одном месте</p>
-          <Button className="mt-8" onClick={() => setStage("auth")}>Перейти дальше</Button>
+          <Button className="mt-10 min-w-48" size="lg" onClick={() => setStage("auth")}>Войти в LunaPair</Button>
         </motion.section>
       </main>
     );
@@ -147,13 +157,12 @@ export function OnboardingPage() {
       <main className="onboarding-screen app-safe-area grid place-items-center py-5">
         <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm w-full px-5">
           <img src="/icons/icon-192.svg" alt="LunaPair" className="mx-auto h-20 w-20 rounded-[1.75rem] shadow-soft" />
-          <h2 className="mt-6 text-2xl font-bold">Добро пожаловать</h2>
-          <p className="mt-3 text-sm text-muted">LunaPair теперь работает в облаке. Войдите через Google, чтобы ваши данные никогда не потерялись.</p>
+          <h2 className="mt-6 text-2xl font-bold">Выберите способ входа</h2>
+          <p className="mt-3 text-sm text-muted">Синхронизация позволит использовать приложение на разных устройствах и делиться циклом с партнёром.</p>
           
-          <div className="mt-8 flex flex-col gap-3">
+          <div className="mt-8 flex flex-col gap-4">
             <Button 
-              className="w-full flex items-center justify-center gap-3 bg-white text-black border border-gray-300 hover:bg-gray-50"
-              size="lg"
+              className="w-full flex items-center justify-center gap-3 bg-white text-black border border-gray-300 hover:bg-gray-50 h-14 text-base"
               onClick={async () => {
                 setIsLoggingIn(true);
                 try {
@@ -169,7 +178,15 @@ export function OnboardingPage() {
                 }
               }}
             >
-              {isLoggingIn ? "Вход..." : "Войти через Google"}
+              {isLoggingIn ? "Вход..." : "Вход через Google (Синхронизация)"}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full h-14 text-base font-normal text-muted hover:text-foreground"
+              onClick={() => setStage("role")}
+            >
+              Продолжить локально (Без регистрации)
             </Button>
             {validationMessage && <p className="text-sm text-coral">{validationMessage}</p>}
           </div>
