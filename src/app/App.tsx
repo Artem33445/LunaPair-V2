@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppToast } from "../components/ui/toast";
 import { AppLayout } from "../components/layout/AppLayout";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../lib/firebase";
 import { useTheme } from "../hooks/useTheme";
 import { useAppStore } from "../stores/appStore";
 import { OnboardingPage } from "../features/onboarding/pages/OnboardingPage";
@@ -17,13 +19,17 @@ import { AssistantPage } from "../features/assistant/pages/AssistantPage";
 import { Card } from "../components/ui/card";
 
 export function App() {
-  const { hydrate, loading, error, profile } = useAppStore();
+  const { hydrate, loading, error, profile, setAuthUser } = useAppStore();
   const [booted, setBooted] = useState(false);
   useTheme(profile?.theme);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setAuthUser(user);
+    });
     void hydrate().finally(() => setBooted(true));
-  }, [hydrate]);
+    return unsubscribe;
+  }, [hydrate, setAuthUser]);
 
   if (!booted || loading) {
     return (

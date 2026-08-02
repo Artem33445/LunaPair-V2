@@ -8,6 +8,7 @@ import { ru } from "../../../i18n/ru";
 import { downloadBackup } from "../../../services/exportService";
 import { noopSyncService } from "../../../services/syncService";
 import { useAppStore } from "../../../stores/appStore";
+import { logout } from "../../../lib/firebase";
 import type { PartnerAccessLevel, PartnerSharingPreferences, PartnerSupportPreferences, UserRole } from "../../../types";
 import {
   applyPartnerAccessLevel,
@@ -44,6 +45,7 @@ const defaultSupport: PartnerSupportPreferences = {
 
 export function ProfilePage() {
   const {
+    authUser,
     profile,
     setTheme,
     setRole,
@@ -163,6 +165,14 @@ export function ProfilePage() {
               Импорт JSON
               <Input className="sr-only" type="file" accept="application/json" onChange={(event) => void onImport(event.target.files?.[0])} />
             </label>
+            {authUser && (
+              <Button variant="outline" onClick={async () => {
+                if (confirm("Выйти из аккаунта Google?")) {
+                  await logout();
+                  window.location.reload();
+                }
+              }}><LogOut className="h-4 w-4" />Выйти из Google</Button>
+            )}
             <Button variant="danger" onClick={() => {
               if (confirm("Полностью сбросить LunaPair? Будут удалены профиль, циклы, дневник, настройки, демо-режим, история ассистента и экран приветствия. После этого приложение начнётся заново.")) void clearAll();
             }}><RotateCcw className="h-4 w-4" />Сбросить приложение</Button>

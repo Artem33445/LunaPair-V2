@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { useAppStore } from "../../stores/appStore";
 import { Button } from "../ui/button";
 import { VisualEffects } from "./VisualEffects";
+// @ts-expect-error LightPillar doesn't have types
 import LightPillar from "../ui/LightPillar";
 
 const trackerNav = [

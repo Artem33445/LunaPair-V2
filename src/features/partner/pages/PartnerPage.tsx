@@ -549,7 +549,6 @@ function formatIntimacy(intimacy: PartnerVisibleDay["intimacy"]) {
 }
 
 function PartnerEmpathyCard({ phase }: { phase?: CyclePhase }) {
-  // @ts-expect-error fallback until types fully updated
   if (!phase || !ru.partnerTips?.[phase]) return null;
   return (
     <MagicBento
@@ -563,7 +562,6 @@ function PartnerEmpathyCard({ phase }: { phase?: CyclePhase }) {
               <HeartHandshake className="h-5 w-5" />
               Подсказка для тебя
             </h2>
-            {/* @ts-expect-error fallback until types fully updated */}
             <p className="mt-2 text-sm font-medium leading-relaxed">{ru.partnerTips[phase]}</p>
           </>
         )

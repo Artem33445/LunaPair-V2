@@ -9,15 +9,18 @@ import { clamp, todayIso } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
 import type { ThemePreference, UserRole } from "../../../types";
 
-type Stage = "splash" | "role" | "tracker" | "partner";
+import { loginWithGoogle } from "../../../lib/firebase";
+
+type Stage = "splash" | "auth" | "role" | "tracker" | "partner";
 
 const today = todayIso();
 
 export function OnboardingPage() {
   const complete = useAppStore((state) => state.completeOnboarding);
   const enableDemo = useAppStore((state) => state.enablePartnerDemo);
-  const [stage, setStage] = useState<Stage>(() => (localStorage.getItem("lunapair-splash") ? "role" : "splash"));
+  const [stage, setStage] = useState<Stage>(() => (localStorage.getItem("lunapair-splash") ? "auth" : "splash"));
   const [role, setRole] = useState<UserRole>("tracker");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [lastStart, setLastStart] = useState("");
@@ -32,10 +35,20 @@ export function OnboardingPage() {
     if (stage !== "splash") return;
     const timer = window.setTimeout(() => {
       localStorage.setItem("lunapair-splash", "seen");
-      setStage("role");
+      setStage("auth");
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [stage]);
+
+  const authUser = useAppStore((state) => state.authUser);
+  useEffect(() => {
+    if (stage === "auth" && authUser) {
+      if (authUser.displayName && !name) {
+        setName(authUser.displayName);
+      }
+      setStage("role");
+    }
+  }, [stage, authUser, name]);
 
   useEffect(() => {
     const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -123,7 +136,43 @@ export function OnboardingPage() {
           <img src="/icons/icon-192.svg" alt="LunaPair" className="mx-auto h-24 w-24 rounded-[2rem] shadow-soft" />
           <h1 className="mt-6 text-4xl font-bold">LunaPair</h1>
           <p className="mt-3 text-muted">Цикл, забота и понимание — в одном месте</p>
-          <Button className="mt-8" onClick={() => setStage("role")}>Перейти дальше</Button>
+          <Button className="mt-8" onClick={() => setStage("auth")}>Перейти дальше</Button>
+        </motion.section>
+      </main>
+    );
+  }
+
+  if (stage === "auth") {
+    return (
+      <main className="onboarding-screen app-safe-area grid place-items-center py-5">
+        <motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-sm w-full px-5">
+          <img src="/icons/icon-192.svg" alt="LunaPair" className="mx-auto h-20 w-20 rounded-[1.75rem] shadow-soft" />
+          <h2 className="mt-6 text-2xl font-bold">Добро пожаловать</h2>
+          <p className="mt-3 text-sm text-muted">LunaPair теперь работает в облаке. Войдите через Google, чтобы ваши данные никогда не потерялись.</p>
+          
+          <div className="mt-8 flex flex-col gap-3">
+            <Button 
+              className="w-full flex items-center justify-center gap-3 bg-white text-black border border-gray-300 hover:bg-gray-50"
+              size="lg"
+              onClick={async () => {
+                setIsLoggingIn(true);
+                try {
+                  const user = await loginWithGoogle();
+                  if (user?.displayName) {
+                    setName(user.displayName);
+                  }
+                  setStage("role");
+                } catch (e) {
+                  setValidationMessage("Не удалось войти. Попробуйте еще раз.");
+                } finally {
+                  setIsLoggingIn(false);
+                }
+              }}
+            >
+              {isLoggingIn ? "Вход..." : "Войти через Google"}
+            </Button>
+            {validationMessage && <p className="text-sm text-coral">{validationMessage}</p>}
+          </div>
         </motion.section>
       </main>
     );

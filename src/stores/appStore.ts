@@ -9,6 +9,7 @@ import type {
   ThemePreference,
   UserRole
 } from "../types";
+import { User } from "firebase/auth";
 import { createDemoData, defaultSharing } from "../features/cycle/domain/demoData";
 import { repositories } from "../db/repositories/localRepositories";
 import { createBackup } from "../services/exportService";
@@ -30,12 +31,14 @@ interface OnboardingInput {
 type DailyLogInput = Omit<DailyLog, "id" | "source" | "createdAt" | "updatedAt">;
 
 interface AppState {
+  authUser?: User | null;
   profile?: AppProfile;
   cycles: CycleEntry[];
   dailyLogs: DailyLog[];
   loading: boolean;
   error?: string;
   toast?: string;
+  setAuthUser: (user: User | null) => void;
   hydrate: () => Promise<void>;
   completeOnboarding: (input: OnboardingInput) => Promise<void>;
   enablePartnerDemo: (name: string) => Promise<void>;
@@ -101,9 +104,12 @@ function generateSixDigitCode() {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  authUser: undefined,
   cycles: [],
   dailyLogs: [],
   loading: true,
+
+  setAuthUser: (user) => set({ authUser: user }),
 
   hydrate: async () => {
     set({ loading: true, error: undefined });
