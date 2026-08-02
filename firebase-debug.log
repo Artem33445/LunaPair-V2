@@ -1,1 +1,31 @@
-[debug] [2026-08-02T10:16:25.319Z] ----------------------------------------------------------------------
+[debug] [2026-08-02T10:21:00.365Z] ----------------------------------------------------------------------
+[debug] [2026-08-02T10:21:00.367Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\zukv3\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-08-02T10:21:00.367Z] CLI Version:   15.23.0
+[debug] [2026-08-02T10:21:00.367Z] Platform:      win32
+[debug] [2026-08-02T10:21:00.367Z] Node Version:  v24.18.0
+[debug] [2026-08-02T10:21:00.367Z] Detected Agent: antigravity
+[debug] [2026-08-02T10:21:00.367Z] Time:          Sun Aug 02 2026 12:21:00 GMT+0200 (Центральная Европа, летнее время)
+[debug] [2026-08-02T10:21:00.367Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-02T10:21:01.677Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-02T10:21:01.677Z] > authorizing via signed-in user (zulv304@gmail.com)
+[debug] [2026-08-02T10:21:01.677Z] [iam] checking project lunapair-452de for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-08-02T10:21:01.686Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:01.686Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:01.687Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/lunapair-452de:testIamPermissions [none]
+[debug] [2026-08-02T10:21:01.687Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/lunapair-452de:testIamPermissions  x-goog-user-project=lunapair-452de
+[debug] [2026-08-02T10:21:01.688Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lunapair-452de:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-02T10:21:01.932Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/lunapair-452de:testIamPermissions 200
+[debug] [2026-08-02T10:21:01.932Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/lunapair-452de:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-08-02T10:21:01.933Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:01.933Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:01.933Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/lunapair-452de [none]
+[debug] [2026-08-02T10:21:02.232Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/lunapair-452de 200
+[debug] [2026-08-02T10:21:02.232Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/lunapair-452de {"projectId":"lunapair-452de","projectNumber":"1831317939","displayName":"LunaPair","name":"projects/lunapair-452de","resources":{"hostingSite":"lunapair-452de"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_9935e0bf-7dd6-4311-be43-dafbc9192357"}
+[info] 
+[info] === Deploying to 'lunapair-452de'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-08-02T10:21:02.234Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:02.234Z] Checked if tokens are valid: true, expires at: 1785667247564
+[debug] [2026-08-02T10:21:02.234Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/lunapair-452de/sites/lunapair-452de [none]

@@ -317,8 +317,8 @@ const GlobalSpotlight = ({
     spotlight.className = 'global-spotlight';
     spotlight.style.cssText = `
       position: fixed;
-      width: 800px;
-      height: 800px;
+      width: 300px;
+      height: 300px;
       border-radius: 50%;
       pointer-events: none;
       background: radial-gradient(circle,
