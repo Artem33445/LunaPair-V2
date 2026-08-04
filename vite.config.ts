@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/lunapair.svg", "icons/icon-192.png", "icons/icon-512.png"],
+      includeAssets: ["icons/lunapair.svg", "icons/icon-192.png", "icons/icon-512.png", "apple-touch-icon.png", "favicon.png", "icon.png"],
       manifest: {
         name: "LunaPair",
         short_name: "LunaPair",
