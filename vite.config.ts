@@ -48,7 +48,8 @@ export default defineConfig({
         skipWaiting: true,
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-        runtimeCaching: []
+        runtimeCaching: [],
+        maximumFileSizeToCacheInBytes: 4000000
       }
     })
   ],

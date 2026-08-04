@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+import { getFirestore, initializeFirestore, persistentLocalCache } from "firebase/firestore";
 
 const firebaseConfig = {
   projectId: "lunapair-452de",
@@ -14,6 +15,10 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache()
+});
 
 export const loginWithGoogle = async () => {
   try {
