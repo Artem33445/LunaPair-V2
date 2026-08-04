@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icons/lunapair.svg", "icons/icon-192.svg", "icons/icon-512.svg"],
+      includeAssets: ["icons/lunapair.svg", "icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
         name: "LunaPair",
         short_name: "LunaPair",
@@ -23,15 +23,15 @@ export default defineConfig({
         categories: ["health", "lifestyle"],
         icons: [
           {
-            src: "/icons/icon-192.svg",
+            src: "/icons/icon-192.png",
             sizes: "192x192",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any"
           },
           {
-            src: "/icons/icon-512.svg",
+            src: "/icons/icon-512.png",
             sizes: "512x512",
-            type: "image/svg+xml",
+            type: "image/png",
             purpose: "any maskable"
           },
           {
@@ -47,7 +47,7 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         navigateFallback: "/index.html",
-        globPatterns: ["**/*.{js,css,html,svg,ico}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
         runtimeCaching: []
       }
     })
