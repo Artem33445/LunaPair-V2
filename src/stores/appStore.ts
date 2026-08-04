@@ -11,7 +11,8 @@ import type {
 } from "../types";
 import { User } from "firebase/auth";
 import { createDemoData, defaultSharing } from "../features/cycle/domain/demoData";
-import { repositories } from "../db/repositories/localRepositories";
+import { getRepositories } from "../db/repositories";
+import { migrateLocalToFirebaseIfNeeded } from "../services/migrationService";
 import { createBackup } from "../services/exportService";
 import { parseBackup } from "../services/importService";
 import { id, todayIso } from "../lib/utils";
@@ -52,6 +53,7 @@ interface AppState {
   setSupportPreferences: (preferences: PartnerSupportPreferences) => Promise<void>;
   setHidePrivateMarkers: (hidden: boolean) => Promise<void>;
   setDisableAnimatedBackground: (disabled: boolean) => Promise<void>;
+  setGeminiApiKey: (key: string | undefined) => Promise<void>;
   startPeriod: (date?: string) => Promise<void>;
   endPeriod: (date?: string) => Promise<void>;
   saveDailyLog: (log: DailyLogInput) => Promise<void>;
@@ -88,11 +90,11 @@ function deriveCycleLengths(cycles: CycleEntry[]) {
 }
 
 async function persistAll(profile: AppProfile, cycles: CycleEntry[], logs: DailyLog[]) {
-  await repositories.profile.save(profile);
-  await repositories.cycles.clear();
-  await repositories.cycles.bulkPut(cycles);
-  await repositories.dailyLogs.clear();
-  await repositories.dailyLogs.bulkPut(logs);
+  await getRepositories(useAppStore.getState().authUser?.uid).profile.save(profile);
+  await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
+  await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
+  await getRepositories(useAppStore.getState().authUser?.uid).dailyLogs.clear();
+  await getRepositories(useAppStore.getState().authUser?.uid).dailyLogs.bulkPut(logs);
 }
 
 function canWriteAsTracker(profile: AppProfile | undefined) {
@@ -109,15 +111,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   dailyLogs: [],
   loading: true,
 
-  setAuthUser: (user) => set({ authUser: user }),
+  setAuthUser: async (user) => {
+    set({ authUser: user });
+    if (user) {
+      set({ loading: true });
+      await migrateLocalToFirebaseIfNeeded(user.uid);
+      await get().hydrate();
+    }
+  },
 
   hydrate: async () => {
     set({ loading: true, error: undefined });
     try {
       const [profile, cycles, dailyLogs] = await Promise.all([
-        repositories.profile.get(),
-        repositories.cycles.list(),
-        repositories.dailyLogs.list()
+        getRepositories(get().authUser?.uid).profile.get(),
+        getRepositories(get().authUser?.uid).cycles.list(),
+        getRepositories(get().authUser?.uid).dailyLogs.list()
       ]);
       const normalized = profile ? { ...profile, partnerSharing: normalizePartnerSharing(profile.partnerSharing) } : undefined;
       set({ profile: normalized, cycles, dailyLogs, loading: false });
@@ -177,7 +186,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const demo = createDemoData();
     demo.profile.name = name.trim();
     await persistAll(demo.profile, demo.cycles, demo.logs);
-    await repositories.partnerConnection.setDemoEnabled(true);
+    await getRepositories(get().authUser?.uid).partnerConnection.setDemoEnabled(true);
     localStorage.setItem("lunapair-onboarding", "done");
     set({
       profile: demo.profile,
@@ -192,7 +201,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem("lunapair-theme", theme);
     if (!profile) return;
     const updated = { ...profile, theme, updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: "Тема сохранена" });
   },
 
@@ -200,7 +209,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const profile = get().profile;
     if (!profile) return;
     const updated = { ...profile, role, updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: "Роль изменена" });
   },
 
@@ -224,8 +233,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       updatedAt: now()
     };
-    await repositories.profile.save(updated);
-    await repositories.partnerConnection.createInvite();
+    await getRepositories(get().authUser?.uid).profile.save(updated);
+    await getRepositories(get().authUser?.uid).partnerConnection.createInvite();
     set({ profile: updated, toast: "Ключ подтверждения создан" });
     return code;
   },
@@ -255,8 +264,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       updatedAt: timestamp
     };
-    await repositories.profile.save(updated);
-    await repositories.partnerConnection.connectWithCode(normalized);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
+    await getRepositories(get().authUser?.uid).partnerConnection.connectWithCode(normalized);
     set({ profile: updated, toast: "Ключ подтверждён. Партнёрский preview открыт" });
   },
 
@@ -268,7 +277,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     const updated = { ...profile, partnerSharing: normalizePartnerSharing(sharing), updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: "Настройки доступа сохранены" });
   },
 
@@ -291,9 +300,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       updatedAt: timestamp
     };
-    await repositories.profile.save(updated);
-    if (paused) await repositories.partnerConnection.pauseAccess();
-    else await repositories.partnerConnection.resumeAccess();
+    await getRepositories(get().authUser?.uid).profile.save(updated);
+    if (paused) await getRepositories(get().authUser?.uid).partnerConnection.pauseAccess();
+    else await getRepositories(get().authUser?.uid).partnerConnection.resumeAccess();
     set({ profile: updated, toast: paused ? "Доступ партнёра приостановлен" : "Доступ партнёра возобновлён" });
   },
 
@@ -316,8 +325,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       updatedAt: timestamp
     };
-    await repositories.profile.save(updated);
-    await repositories.partnerConnection.disconnect();
+    await getRepositories(get().authUser?.uid).profile.save(updated);
+    await getRepositories(get().authUser?.uid).partnerConnection.disconnect();
     set({ profile: updated, toast: "Партнёрский доступ отключён" });
   },
 
@@ -329,7 +338,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     const updated = { ...profile, supportPreferences: preferences, updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: "Предпочтения поддержки сохранены" });
   },
 
@@ -341,7 +350,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     const updated = { ...profile, hidePrivateMarkers: hidden, updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: hidden ? "Приватные маркеры скрыты" : "Приватные маркеры показаны" });
   },
 
@@ -349,8 +358,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const profile = get().profile;
     if (!profile) return;
     const updated = { ...profile, disableAnimatedBackground: disabled, updatedAt: now() };
-    await repositories.profile.save(updated);
+    await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated });
+  },
+
+  setGeminiApiKey: async (key) => {
+    const profile = get().profile;
+    if (!profile) return;
+    const updated = { ...profile, geminiApiKey: key, updatedAt: now() };
+    await getRepositories(get().authUser?.uid).profile.save(updated);
+    set({ profile: updated, toast: key ? "API ключ сохранен" : "API ключ удален" });
   },
 
   startPeriod: async (date = todayIso()) => {
@@ -388,8 +405,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         updatedAt: createdAt
       }
     ]);
-    await repositories.cycles.clear();
-    await repositories.cycles.bulkPut(cycles);
+    await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
+    await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
     set({ cycles, toast: "Начало месячных сохранено" });
   },
 
@@ -415,7 +432,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       updatedAt: now()
     };
     const next = cycles.map((cycle) => (cycle.id === latest.id ? updated : cycle));
-    await repositories.cycles.upsert(updated);
+    await getRepositories(get().authUser?.uid).cycles.upsert(updated);
     set({ cycles: next, toast: "Окончание месячных сохранено" });
   },
 
@@ -424,7 +441,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может создавать или изменять записи" });
       return;
     }
-    const existing = await repositories.dailyLogs.getByDate(input.date);
+    const existing = await getRepositories(get().authUser?.uid).dailyLogs.getByDate(input.date);
     const timestamp = now();
     const log: DailyLog = {
       ...input,
@@ -438,7 +455,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp
     };
-    await repositories.dailyLogs.upsert(log);
+    await getRepositories(get().authUser?.uid).dailyLogs.upsert(log);
     const others = get().dailyLogs.filter((item) => item.id !== log.id);
     set({
       dailyLogs: [...others, log].sort((a, b) => a.date.localeCompare(b.date)),
@@ -451,7 +468,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может удалять записи" });
       return;
     }
-    await repositories.dailyLogs.delete(idValue);
+    await getRepositories(get().authUser?.uid).dailyLogs.delete(idValue);
     set({ dailyLogs: get().dailyLogs.filter((log) => log.id !== idValue), toast: "Запись очищена" });
   },
 
@@ -460,7 +477,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может удалять записи" });
       return;
     }
-    await repositories.dailyLogs.deleteByDate(date);
+    await getRepositories(get().authUser?.uid).dailyLogs.deleteByDate(date);
     set({ dailyLogs: get().dailyLogs.filter((log) => log.date !== date), toast: "Запись за день очищена" });
   },
 
@@ -493,10 +510,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       return;
     }
     await Promise.all([
-      repositories.profile.clear(),
-      repositories.cycles.clear(),
-      repositories.dailyLogs.clear(),
-      repositories.partnerConnection.clear()
+      getRepositories(get().authUser?.uid).profile.clear(),
+      getRepositories(useAppStore.getState().authUser?.uid).cycles.clear(),
+      getRepositories(useAppStore.getState().authUser?.uid).dailyLogs.clear(),
+      getRepositories(get().authUser?.uid).partnerConnection.clear()
     ]);
     clearLunaPairBrowserState();
     set({

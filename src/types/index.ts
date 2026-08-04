@@ -47,6 +47,7 @@ export interface AppProfile {
   partnerInviteConfirmedAt?: string;
   hidePrivateMarkers?: boolean;
   disableAnimatedBackground?: boolean;
+  geminiApiKey?: string;
   createdAt: string;
   updatedAt: string;
 }

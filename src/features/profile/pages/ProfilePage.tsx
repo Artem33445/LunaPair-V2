@@ -57,6 +57,7 @@ export function ProfilePage() {
     setSupportPreferences,
     setHidePrivateMarkers,
     setDisableAnimatedBackground,
+    setGeminiApiKey,
     exportJson,
     importJson,
     clearAll
@@ -129,7 +130,27 @@ export function ProfilePage() {
             <Button variant={profile.theme === "system" ? "primary" : "outline"} onClick={() => void setTheme("system")}>Система</Button>
           </div>
           <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">{sync.message}</p>
-          <div className="mt-4 pt-4 border-t border-border">
+          <div className="mt-4 pt-4 border-t border-border space-y-4">
+            <div>
+              <FieldLabel htmlFor="gemini">Gemini API Key (Для ИИ)</FieldLabel>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  id="gemini"
+                  type="password"
+                  placeholder="AIzaSy..."
+                  value={profile.geminiApiKey || ""}
+                  onChange={(e) => void setGeminiApiKey(e.target.value)}
+                />
+                {profile.geminiApiKey && (
+                  <Button variant="danger" onClick={() => void setGeminiApiKey("")}>
+                    Удалить
+                  </Button>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                Ваш ключ хранится только на вашем устройстве. Получить ключ можно бесплатно в <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-primary underline">Google AI Studio</a>.
+              </p>
+            </div>
             <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
               <span>
                 <span className="block font-semibold">Анимированный фон на ПК</span>

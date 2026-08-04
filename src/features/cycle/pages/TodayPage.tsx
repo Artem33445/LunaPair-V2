@@ -11,6 +11,7 @@ import { CycleRing } from "../components/CycleRing";
 import { dailyAdvice, daysUntil, phaseHint, pluralDays, predictCycle } from "../domain/cycleCalculations";
 import { personalInsight } from "../domain/cycleReports";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
+import { DailyInsightWidget } from "../../assistant/components/DailyInsightWidget";
 
 export function TodayPage() {
   const { profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
@@ -106,7 +107,16 @@ export function TodayPage() {
         </Button>
       </header>
 
-      <div className="space-y-6 py-4">
+      {profile?.role !== 'partner' && profile ? (
+        <DailyInsightWidget
+          profile={profile}
+          cycleDay={prediction.cycleDay}
+          phase={prediction.currentPhase}
+          recentLogs={dailyLogs}
+        />
+      ) : null}
+
+      <div className="mx-auto max-w-sm px-4 sm:px-0">
         <CycleRing prediction={prediction} />
         <div className="text-center">
           <p className="mt-1 text-muted font-medium">{periodStatusText}</p>
