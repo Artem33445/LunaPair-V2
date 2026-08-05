@@ -27,7 +27,7 @@ export async function generateDailyInsight(
   recentLogs: DailyLog[]
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_PROMPT });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", systemInstruction: SYSTEM_PROMPT });
 
   const todayLog = recentLogs.find(l => l.date === new Date().toISOString().split("T")[0]);
   
@@ -50,17 +50,23 @@ export async function generateDailyInsight(
   }
 }
 
-export async function sendChatMessage(
+export async function sendChatMessageStream(
   apiKey: string,
   profile: AppProfile,
   history: ChatMessage[],
-  newMessage: string
+  newMessage: string,
+  onUpdate: (text: string) => void
 ): Promise<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", systemInstruction: SYSTEM_PROMPT });
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", systemInstruction: SYSTEM_PROMPT });
+
+  let validHistory = [...history];
+  while (validHistory.length > 0 && validHistory[0].role !== "user") {
+    validHistory.shift();
+  }
 
   const chat = model.startChat({
-    history: history.map(msg => ({
+    history: validHistory.map(msg => ({
       role: msg.role,
       parts: [{ text: msg.content }],
     })),
@@ -68,8 +74,14 @@ export async function sendChatMessage(
 
   try {
     const context = `(Контекст пользователя: средний цикл ${profile.averageCycleLength} дней). `;
-    const result = await chat.sendMessage(context + newMessage);
-    return result.response.text();
+    const result = await chat.sendMessageStream(context + newMessage);
+    let fullResponse = "";
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      fullResponse += chunkText;
+      onUpdate(fullResponse);
+    }
+    return fullResponse;
   } catch (error) {
     console.error("AI Chat Error:", error);
     throw new Error("Ошибка связи с ИИ. Проверьте API ключ и интернет.");

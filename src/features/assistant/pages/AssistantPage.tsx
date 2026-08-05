@@ -5,7 +5,7 @@ import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/field";
 import { useAppStore } from "../../../stores/appStore";
-import { sendChatMessage, type ChatMessage } from "../../../services/aiService";
+import { sendChatMessageStream, type ChatMessage } from "../../../services/aiService";
 import { buildAssistantResponse } from "../domain/assistantEngine";
 
 const quickQuestions = [
@@ -25,6 +25,7 @@ export function AssistantPage() {
   const [question, setQuestion] = useState(() => localStorage.getItem(draftKey) ?? "");
   const [useContext, setUseContext] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -69,14 +70,24 @@ export function AssistantPage() {
     setQuestion("");
     
     setMessages((current) => [...current, { role: "user", content: text }]);
+    setStreamingResponse("");
 
     if (hasApiKey) {
       try {
-        const responseText = await sendChatMessage(profile!.geminiApiKey!, profile!, messages, text);
+        const responseText = await sendChatMessageStream(
+          profile!.geminiApiKey!, 
+          profile!, 
+          messages, 
+          text,
+          (chunk) => {
+            setStreamingResponse(chunk);
+          }
+        );
         setMessages((current) => [...current, { role: "model", content: responseText }]);
       } catch (error) {
         setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с ИИ. Проверьте ваш API-ключ в настройках или интернет-соединение." }]);
       }
+      setStreamingResponse("");
       setIsThinking(false);
     } else {
       // Local Fake Engine
@@ -138,12 +149,20 @@ export function AssistantPage() {
         <div className="flex-1 overflow-y-auto space-y-3 rounded-card border border-border bg-card/60 p-3 mb-4">
           {messages.map((message, index) => (
             <div key={`${message.role}-${index}`} className={`rounded-2xl p-4 text-sm ${message.role === "model" ? "bg-primarySoft text-text mr-8" : "ml-auto bg-primary text-white md:max-w-[78%] ml-8"}`}>
-              {message.content.split("\\n").map((line, i) => (
+              {message.content.split("\n").map((line, i) => (
                 <p key={i} className="mb-1 last:mb-0">{line}</p>
               ))}
             </div>
           ))}
-          {isThinking ? <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted w-fit animate-pulse">Luna печатает...</p> : null}
+          {isThinking && streamingResponse ? (
+            <div className="rounded-2xl p-4 text-sm bg-primarySoft text-text mr-8">
+              {streamingResponse.split("\n").map((line, i) => (
+                <p key={i} className="mb-1 last:mb-0">{line}</p>
+              ))}
+            </div>
+          ) : isThinking ? (
+            <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted w-fit animate-pulse">Luna печатает...</p>
+          ) : null}
           <div ref={messagesEndRef} />
         </div>
 

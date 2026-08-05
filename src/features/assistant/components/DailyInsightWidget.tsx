@@ -34,7 +34,9 @@ export function DailyInsightWidget({ profile, cycleDay, phase, recentLogs }: Pro
       .then((res) => {
         if (isMounted) {
           setInsight(res);
-          sessionStorage.setItem(cacheKey, res);
+          if (!res.startsWith("Не удалось загрузить")) {
+            sessionStorage.setItem(cacheKey, res);
+          }
         }
       })
       .catch(() => {
