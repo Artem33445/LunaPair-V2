@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Bot } from "lucide-react";
+import { Bot } from "lucide-react";
 import { useAppStore } from "../../../stores/appStore";
 import { generateDailyInsight } from "../../../services/aiService";
 import type { AppProfile, DailyLog } from "../../../types";
@@ -17,7 +17,7 @@ export function DailyInsightWidget({ profile, cycleDay, phase, recentLogs }: Pro
 
   useEffect(() => {
     if (!profile.geminiApiKey) {
-      setInsight("Чтобы получать персонализированные умные советы от ИИ, добавьте API-ключ Gemini в настройках.");
+      setInsight("Чтобы получать персональные советы от ИИ, добавьте API-ключ в настройках.");
       return;
     }
 
@@ -56,13 +56,13 @@ export function DailyInsightWidget({ profile, cycleDay, phase, recentLogs }: Pro
       <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl"></div>
       <div className="relative h-full rounded-[calc(1.5rem-1px)] bg-card/60 p-5 backdrop-blur-xl">
         <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-primary">
-          <Sparkles className="h-5 w-5" /> Совет от Luna AI
+          <Bot className="h-5 w-5" /> Совет от Luna ИИ
         </h3>
         
         {isLoading ? (
           <div className="flex animate-pulse space-x-2 items-center text-muted">
             <Bot className="w-5 h-5" />
-            <span className="text-sm">Генерация персонального инсайта...</span>
+            <span className="text-sm">Готовлю персональный совет...</span>
           </div>
         ) : (
           <p className="text-sm leading-relaxed text-text">{insight}</p>

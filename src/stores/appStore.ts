@@ -53,7 +53,7 @@ interface AppState {
   setSupportPreferences: (preferences: PartnerSupportPreferences) => Promise<void>;
   setHidePrivateMarkers: (hidden: boolean) => Promise<void>;
   setDisableAnimatedBackground: (disabled: boolean) => Promise<void>;
-  setGeminiApiKey: (key: string | undefined) => Promise<void>;
+  setAiApiKey: (key: string | undefined) => Promise<void>;
   startPeriod: (date?: string) => Promise<void>;
   endPeriod: (date?: string) => Promise<void>;
   saveDailyLog: (log: DailyLogInput) => Promise<void>;
@@ -362,7 +362,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ profile: updated });
   },
 
-  setGeminiApiKey: async (key) => {
+  setAiApiKey: async (key) => {
     const profile = get().profile;
     if (!profile) return;
     const updated = { ...profile, geminiApiKey: key, updatedAt: now() };

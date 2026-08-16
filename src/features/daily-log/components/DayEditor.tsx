@@ -1,4 +1,4 @@
-import { X, Sparkles } from "lucide-react";
+import { Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
@@ -175,7 +175,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
             className="fixed top-20 left-1/2 z-50 flex w-[90%] max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl bg-card p-4 shadow-xl border border-primary/20"
           >
-            <Sparkles className="mt-0.5 h-5 w-5 text-primary shrink-0" />
+            <Heart className="mt-0.5 h-5 w-5 shrink-0 text-coral" fill="currentColor" />
             <p className="text-sm font-medium leading-relaxed">{insight}</p>
           </motion.div>
         )}

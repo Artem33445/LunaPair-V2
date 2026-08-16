@@ -13,6 +13,14 @@ import { personalInsight } from "../domain/cycleReports";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 import { DailyInsightWidget } from "../../assistant/components/DailyInsightWidget";
 
+const phaseLegendItems = [
+  { key: "menstrual", label: "Месячные" },
+  { key: "follicular", label: "Фолликул." },
+  { key: "fertile", label: "Фертильное окно" },
+  { key: "ovulation", label: "Овуляция" },
+  { key: "luteal", label: "Лютеиновая" }
+] as const;
+
 export function TodayPage() {
   const { profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
   const navigate = useNavigate();
@@ -121,9 +129,15 @@ export function TodayPage() {
         <div className="text-center">
           <p className="mt-1 text-muted font-medium">{periodStatusText}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-4">
-          {Object.entries(ru.phase).map(([key, label]) => (
-            <span key={key} className="rounded-2xl bg-primarySoft px-3 py-2 text-center">{label}</span>
+        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
+          {phaseLegendItems.map((item) => (
+            <span
+              key={item.key}
+              className="flex min-h-10 items-center justify-center rounded-xl bg-primarySoft px-2 py-2 text-center text-[11px] font-medium leading-tight"
+              aria-label={ru.phase[item.key]}
+            >
+              {item.label}
+            </span>
           ))}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { addDays, addMonths, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Info, Sparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Info, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";
@@ -111,7 +111,7 @@ export function CalendarPage() {
                   
                   {isCurrentMonth && todayDate ? <span aria-hidden className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /> : null}
                   {isCurrentMonth && log ? <span className="absolute bottom-1 left-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary" title="Есть запись" /> : null}
-                  {isCurrentMonth && hasPrivate ? <Sparkles className="absolute right-1 top-4 z-10 h-3.5 w-3.5 text-primary" aria-label="Есть приватная запись" /> : null}
+                  {isCurrentMonth && hasPrivate ? <Heart className="absolute right-1 top-4 z-10 h-3.5 w-3.5 text-coral" fill="currentColor" aria-label="Есть приватная запись" /> : null}
                 </button>
               )
             };

@@ -1,4 +1,4 @@
-import { Copy, RotateCcw, Send, Trash2, Bot, AlertTriangle, KeyRound } from "lucide-react";
+import { Send, Trash2, Bot, AlertTriangle, KeyRound } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
@@ -112,7 +112,7 @@ export function AssistantPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2"><Bot className="w-8 h-8 text-primary" />Умный ассистент Luna</h1>
           <p className="text-muted">
-            {hasApiKey ? "Подключена нейросеть Gemini AI" : "Локальный режим (Без ИИ)"}
+            {hasApiKey ? "Подключён ИИ-ассистент" : "Локальный режим без ИИ"}
           </p>
         </div>
         <Button variant="outline" onClick={clearHistory}>
@@ -126,7 +126,7 @@ export function AssistantPage() {
           <KeyRound className="w-5 h-5 text-coral mt-0.5 shrink-0" />
           <div>
             <h3 className="font-bold text-coral">Включите полноценный ИИ</h3>
-            <p className="text-sm text-coral mt-1">Сейчас работает только простой скрипт-ответчик. Чтобы Luna стала по-настоящему умной, добавьте бесплатный API-ключ Gemini.</p>
+            <p className="text-sm text-coral mt-1">Сейчас работает простой скрипт-ответчик. Чтобы Luna отвечала умнее, добавьте API-ключ ИИ.</p>
             <Button asChild variant="outline" className="mt-3 border-coral text-coral hover:bg-coral/20">
               <Link to="/profile">Перейти в настройки</Link>
             </Button>

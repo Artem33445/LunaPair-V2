@@ -12,8 +12,8 @@ export const ru = {
   phase: {
     menstrual: "Менструальная фаза",
     follicular: "Фолликулярная фаза",
-    fertile: "Предполагаемое фертильное окно",
-    ovulation: "Предполагаемая овуляция",
+    fertile: "Фертильное окно",
+    ovulation: "Овуляция",
     luteal: "Лютеиновая фаза"
   },
   mood: {
