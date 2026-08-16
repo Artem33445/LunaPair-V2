@@ -143,8 +143,8 @@ body::before {
   margin: -9rem;
   border-radius: 9999px;
   pointer-events: none;
-  background: radial-gradient(circle, hsl(var(--primary) / 0.34) 0%, hsl(var(--primary) / 0.16) 32%, transparent 70%);
-  box-shadow: 0 0 2.5rem hsl(var(--primary) / 0.2);
+  background: radial-gradient(circle, hsl(275 80% 70% / 0.38) 0%, hsl(275 78% 68% / 0.18) 34%, transparent 70%);
+  box-shadow: 0 0 2.5rem hsl(275 78% 64% / 0.2);
   animation: appClickRipple 640ms ease-out forwards;
 }
 
@@ -156,6 +156,17 @@ body::before {
   to {
     opacity: 0;
     transform: scale(1);
+  }
+}
+
+.app-nearby-action-pulse {
+  animation: appNearbyActionPulse 380ms ease-out;
+}
+
+@keyframes appNearbyActionPulse {
+  35% {
+    transform: translateY(-1px) scale(1.025);
+    box-shadow: 0 0 0 5px hsl(275 80% 70% / 0.14), 0 0 1.5rem hsl(275 78% 64% / 0.26);
   }
 }
 
@@ -294,6 +305,10 @@ video {
 
   .app-click-ripple {
     display: none;
+  }
+
+  .app-nearby-action-pulse {
+    animation: none;
   }
 }
 

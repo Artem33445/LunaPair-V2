@@ -29,6 +29,38 @@ export function VisualEffects() {
       ripple.style.top = `${event.clientY}px`;
       ripple.addEventListener("animationend", () => ripple.remove(), { once: true });
       document.body.appendChild(ripple);
+
+      const nearbyAction = Array.from(
+        document.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], [role='button']:not([aria-disabled='true'])")
+      ).reduce<HTMLElement | undefined>((closest, action) => {
+        const rect = action.getBoundingClientRect();
+        const horizontalDistance = Math.max(rect.left - event.clientX, 0, event.clientX - rect.right);
+        const verticalDistance = Math.max(rect.top - event.clientY, 0, event.clientY - rect.bottom);
+        const distance = Math.hypot(horizontalDistance, verticalDistance);
+        const closestDistance = closest
+          ? Math.hypot(
+              Math.max(closest.getBoundingClientRect().left - event.clientX, 0, event.clientX - closest.getBoundingClientRect().right),
+              Math.max(closest.getBoundingClientRect().top - event.clientY, 0, event.clientY - closest.getBoundingClientRect().bottom)
+            )
+          : Infinity;
+
+        return distance < closestDistance ? action : closest;
+      }, undefined);
+
+      if (!nearbyAction) return;
+
+      const actionRect = nearbyAction.getBoundingClientRect();
+      const actionDistance = Math.hypot(
+        Math.max(actionRect.left - event.clientX, 0, event.clientX - actionRect.right),
+        Math.max(actionRect.top - event.clientY, 0, event.clientY - actionRect.bottom)
+      );
+
+      if (actionDistance > 160) return;
+
+      nearbyAction.classList.remove("app-nearby-action-pulse");
+      void nearbyAction.offsetWidth;
+      nearbyAction.classList.add("app-nearby-action-pulse");
+      nearbyAction.addEventListener("animationend", () => nearbyAction.classList.remove("app-nearby-action-pulse"), { once: true });
     };
 
     window.addEventListener("mousemove", move, { passive: true });
