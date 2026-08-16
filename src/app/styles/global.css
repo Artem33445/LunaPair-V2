@@ -132,7 +132,7 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(circle at var(--cursor-x) var(--cursor-y), hsl(var(--primary) / 0.12), transparent 6rem);
+  background: radial-gradient(circle at var(--cursor-x) var(--cursor-y), hsl(275 86% 70% / 0.084), transparent 6rem);
 }
 
 .app-click-ripple {
@@ -160,13 +160,13 @@ body::before {
 }
 
 .app-nearby-action-pulse {
-  animation: appNearbyActionPulse 380ms ease-out;
+  animation: appNearbyActionPulse 260ms ease-out;
 }
 
 @keyframes appNearbyActionPulse {
-  35% {
-    transform: translateY(-1px) scale(1.025);
-    box-shadow: 0 0 0 5px hsl(275 80% 70% / 0.14), 0 0 1.5rem hsl(275 78% 64% / 0.26);
+  45% {
+    transform: translate3d(var(--nearby-nudge-x), var(--nearby-nudge-y), 0) scale(1.006);
+    box-shadow: 0 0 0 3px hsl(275 84% 70% / 0.07), 0 0 0.75rem hsl(275 80% 64% / 0.12);
   }
 }
 

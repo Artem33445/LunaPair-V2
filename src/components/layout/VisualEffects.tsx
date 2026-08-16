@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 
+function distanceToAction(pointX: number, pointY: number, rect: DOMRect) {
+  return Math.hypot(
+    Math.max(rect.left - pointX, 0, pointX - rect.right),
+    Math.max(rect.top - pointY, 0, pointY - rect.bottom)
+  );
+}
+
 export function VisualEffects() {
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -33,16 +40,8 @@ export function VisualEffects() {
       const nearbyAction = Array.from(
         document.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], [role='button']:not([aria-disabled='true'])")
       ).reduce<HTMLElement | undefined>((closest, action) => {
-        const rect = action.getBoundingClientRect();
-        const horizontalDistance = Math.max(rect.left - event.clientX, 0, event.clientX - rect.right);
-        const verticalDistance = Math.max(rect.top - event.clientY, 0, event.clientY - rect.bottom);
-        const distance = Math.hypot(horizontalDistance, verticalDistance);
-        const closestDistance = closest
-          ? Math.hypot(
-              Math.max(closest.getBoundingClientRect().left - event.clientX, 0, event.clientX - closest.getBoundingClientRect().right),
-              Math.max(closest.getBoundingClientRect().top - event.clientY, 0, event.clientY - closest.getBoundingClientRect().bottom)
-            )
-          : Infinity;
+        const distance = distanceToAction(event.clientX, event.clientY, action.getBoundingClientRect());
+        const closestDistance = closest ? distanceToAction(event.clientX, event.clientY, closest.getBoundingClientRect()) : Infinity;
 
         return distance < closestDistance ? action : closest;
       }, undefined);
@@ -50,17 +49,24 @@ export function VisualEffects() {
       if (!nearbyAction) return;
 
       const actionRect = nearbyAction.getBoundingClientRect();
-      const actionDistance = Math.hypot(
-        Math.max(actionRect.left - event.clientX, 0, event.clientX - actionRect.right),
-        Math.max(actionRect.top - event.clientY, 0, event.clientY - actionRect.bottom)
-      );
+      const actionDistance = distanceToAction(event.clientX, event.clientY, actionRect);
 
       if (actionDistance > 160) return;
+
+      const actionCenterX = actionRect.left + actionRect.width / 2;
+      const actionCenterY = actionRect.top + actionRect.height / 2;
+      const directionLength = Math.hypot(actionCenterX - event.clientX, actionCenterY - event.clientY) || 1;
+      nearbyAction.style.setProperty("--nearby-nudge-x", `${((actionCenterX - event.clientX) / directionLength) * 1}px`);
+      nearbyAction.style.setProperty("--nearby-nudge-y", `${((actionCenterY - event.clientY) / directionLength) * 1}px`);
 
       nearbyAction.classList.remove("app-nearby-action-pulse");
       void nearbyAction.offsetWidth;
       nearbyAction.classList.add("app-nearby-action-pulse");
-      nearbyAction.addEventListener("animationend", () => nearbyAction.classList.remove("app-nearby-action-pulse"), { once: true });
+      nearbyAction.addEventListener("animationend", () => {
+        nearbyAction.classList.remove("app-nearby-action-pulse");
+        nearbyAction.style.removeProperty("--nearby-nudge-x");
+        nearbyAction.style.removeProperty("--nearby-nudge-y");
+      }, { once: true });
     };
 
     window.addEventListener("mousemove", move, { passive: true });
