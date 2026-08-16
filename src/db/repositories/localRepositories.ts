@@ -1,4 +1,5 @@
 import type {
+  AdviceRepository,
   AppProfile,
   CycleEntry,
   CycleRepository,
@@ -7,6 +8,7 @@ import type {
   PartnerConnection,
   PartnerConnectionRepository,
   PartnerInvite,
+  PersonalAdvicePackage,
   ProfileRepository
 } from "../../types";
 import { id } from "../../lib/utils";
@@ -98,6 +100,20 @@ export class LocalProfileRepository implements ProfileRepository {
 
   async clear() {
     await db.profiles.clear();
+  }
+}
+
+export class LocalAdviceRepository implements AdviceRepository {
+  async getLatest() {
+    return db.advicePackages.orderBy("generatedAt").last();
+  }
+
+  async save(advice: PersonalAdvicePackage) {
+    await db.advicePackages.put(advice);
+  }
+
+  async clear() {
+    await db.advicePackages.clear();
   }
 }
 
@@ -199,6 +215,7 @@ function isPartnerConnection(value: unknown): value is PartnerConnection {
 export const repositories = {
   cycles: new LocalCycleRepository(),
   dailyLogs: new LocalDailyLogRepository(),
+  advice: new LocalAdviceRepository(),
   profile: new LocalProfileRepository(),
   partnerConnection: new LocalPartnerConnectionRepository()
 };

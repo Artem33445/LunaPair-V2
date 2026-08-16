@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { AppProfile, CycleEntry, DailyLog } from "../types";
+import type { AppProfile, CycleEntry, DailyLog, PersonalAdvicePackage } from "../types";
 import { normalizePartnerSharing } from "../features/partner/domain/partnerPermissions";
 
 interface SettingRecord {
@@ -11,6 +11,7 @@ export class LunaPairDatabase extends Dexie {
   profiles!: Table<AppProfile, string>;
   cycles!: Table<CycleEntry, string>;
   dailyLogs!: Table<DailyLog, string>;
+  advicePackages!: Table<PersonalAdvicePackage, string>;
   settings!: Table<SettingRecord, string>;
 
   constructor() {
@@ -62,6 +63,13 @@ export class LunaPairDatabase extends Dexie {
           profile.partnerSharing = normalizePartnerSharing(profile.partnerSharing);
         });
       });
+    this.version(4).stores({
+      profiles: "id, role",
+      cycles: "id, startDate, source",
+      dailyLogs: "id, &date, source",
+      advicePackages: "id, generatedAt, expiresAt, contextHash, source",
+      settings: "key"
+    });
   }
 }
 

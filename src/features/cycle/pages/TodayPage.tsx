@@ -118,8 +118,8 @@ export function TodayPage() {
       {profile?.role !== 'partner' && profile ? (
         <DailyInsightWidget
           profile={profile}
-          cycleDay={prediction.cycleDay}
-          phase={prediction.currentPhase}
+          cycles={cycles}
+          prediction={prediction}
           recentLogs={dailyLogs}
         />
       ) : null}

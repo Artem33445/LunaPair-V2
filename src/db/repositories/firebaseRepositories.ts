@@ -11,6 +11,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import type {
+  AdviceRepository,
   AppProfile,
   CycleEntry,
   CycleRepository,
@@ -19,6 +20,7 @@ import type {
   PartnerConnection,
   PartnerConnectionRepository,
   PartnerInvite,
+  PersonalAdvicePackage,
   ProfileRepository
 } from "../../types";
 import { db } from "../../lib/firebase";
@@ -156,6 +158,31 @@ export class FirebaseDailyLogRepository implements DailyLogRepository {
     logs.forEach((log) => {
       batch.set(doc(this.colRef, log.id), log);
     });
+    await batch.commit();
+  }
+}
+
+export class FirebaseAdviceRepository implements AdviceRepository {
+  constructor(private uid: string) {}
+
+  private get colRef() {
+    return collection(db, "users", this.uid, "advicePackages");
+  }
+
+  async getLatest() {
+    const q = query(this.colRef, orderBy("generatedAt"));
+    const snap = await getDocs(q);
+    return snap.docs.at(-1)?.data() as PersonalAdvicePackage | undefined;
+  }
+
+  async save(advice: PersonalAdvicePackage) {
+    await setDoc(doc(this.colRef, advice.id), advice);
+  }
+
+  async clear() {
+    const snap = await getDocs(this.colRef);
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
   }
 }

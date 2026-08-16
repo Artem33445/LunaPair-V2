@@ -513,6 +513,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       getRepositories(get().authUser?.uid).profile.clear(),
       getRepositories(useAppStore.getState().authUser?.uid).cycles.clear(),
       getRepositories(useAppStore.getState().authUser?.uid).dailyLogs.clear(),
+      getRepositories(get().authUser?.uid).advice.clear(),
       getRepositories(get().authUser?.uid).partnerConnection.clear()
     ]);
     clearLunaPairBrowserState();

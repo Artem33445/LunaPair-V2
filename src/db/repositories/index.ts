@@ -1,5 +1,6 @@
 import { repositories as localRepos } from "./localRepositories";
 import {
+  FirebaseAdviceRepository,
   FirebaseCycleRepository,
   FirebaseDailyLogRepository,
   FirebasePartnerConnectionRepository,
@@ -12,6 +13,7 @@ export function getRepositories(uid?: string | null) {
       profile: new FirebaseProfileRepository(uid),
       cycles: new FirebaseCycleRepository(uid),
       dailyLogs: new FirebaseDailyLogRepository(uid),
+      advice: new FirebaseAdviceRepository(uid),
       partnerConnection: new FirebasePartnerConnectionRepository(uid)
     };
   }

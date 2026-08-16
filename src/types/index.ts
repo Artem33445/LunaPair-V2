@@ -125,6 +125,33 @@ export interface DailyLog {
   updatedAt: string;
 }
 
+export type AdviceTipCategory =
+  | "wellbeing"
+  | "rest"
+  | "sleep"
+  | "hydration"
+  | "journal"
+  | "activity"
+  | "cycle"
+  | "medical-safety";
+
+export interface AdviceTip {
+  title: string;
+  text: string;
+  category: AdviceTipCategory;
+}
+
+export interface PersonalAdvicePackage {
+  id: string;
+  version: 1;
+  generatedAt: string;
+  expiresAt: string;
+  contextHash: string;
+  source: "ai" | "fallback";
+  summary: string;
+  tips: AdviceTip[];
+}
+
 export interface PartnerVisibleDay {
   date: string;
   cycleDay?: number;
@@ -278,6 +305,12 @@ export interface DailyLogRepository {
   deleteByDate(date: string): Promise<void>;
   clear(): Promise<void>;
   bulkPut(logs: DailyLog[]): Promise<void>;
+}
+
+export interface AdviceRepository {
+  getLatest(): Promise<PersonalAdvicePackage | undefined>;
+  save(advice: PersonalAdvicePackage): Promise<void>;
+  clear(): Promise<void>;
 }
 
 export interface ProfileRepository {
