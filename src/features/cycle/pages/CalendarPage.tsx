@@ -1,6 +1,6 @@
 import { addDays, addMonths, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Heart, Info, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";

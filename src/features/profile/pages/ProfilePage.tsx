@@ -2,7 +2,6 @@ import { AlertTriangle, CheckCircle2, Download, Eye, KeyRound, LogOut, Moon, Pau
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
 import { FieldLabel, Input, Textarea } from "../../../components/ui/field";
 import { ru } from "../../../i18n/ru";
 import { downloadBackup } from "../../../services/exportService";

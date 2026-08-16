@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, RefreshCw } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { getPersonalAdvice } from "../../../services/adviceService";
@@ -14,55 +14,45 @@ interface Props {
 
 export function DailyInsightWidget({ profile, cycles, recentLogs, prediction }: Props) {
   const authUser = useAppStore((state) => state.authUser);
+  const uid = authUser?.uid;
   const [advice, setAdvice] = useState<PersonalAdvicePackage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStale, setIsStale] = useState(false);
-
-  const loadAdvice = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await getPersonalAdvice({
-        profile,
-        cycles,
-        dailyLogs: recentLogs,
-        prediction,
-        uid: authUser?.uid
-      });
-      setAdvice(result.advice);
-      setIsStale(result.stale);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [authUser?.uid, cycles, prediction, profile, recentLogs]);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    getPersonalAdvice({
-      profile,
-      cycles,
-      dailyLogs: recentLogs,
-      prediction,
-      uid: authUser?.uid
-    })
-      .then((result) => {
-        if (!isMounted) return;
+    let isActive = true;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
+    void Promise.resolve().then(async () => {
+      if (!isActive) return;
+      setIsLoading(true);
+      try {
+        const result = await getPersonalAdvice({
+          profile,
+          cycles,
+          dailyLogs: recentLogs,
+          prediction,
+          uid
+        });
+        if (!isActive || requestIdRef.current !== requestId) return;
         setAdvice(result.advice);
         setIsStale(result.stale);
-      })
-      .catch(() => {
-        if (!isMounted) return;
+      } catch {
+        if (!isActive || requestIdRef.current !== requestId) return;
         setAdvice(null);
         setIsStale(false);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+      } finally {
+        if (isActive && requestIdRef.current === requestId) setIsLoading(false);
+      }
+    });
 
     return () => {
-      isMounted = false;
+      isActive = false;
     };
-  }, [authUser?.uid, cycles, prediction, profile, recentLogs]);
+  }, [cycles, prediction, profile, recentLogs, refreshNonce, uid]);
 
   return (
     <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-primarySoft via-card to-card p-[1px]">
@@ -76,7 +66,7 @@ export function DailyInsightWidget({ profile, cycles, recentLogs, prediction }: 
             aria-label="Обновить советы"
             className="min-h-9 rounded-xl px-3 text-xs"
             disabled={isLoading}
-            onClick={() => void loadAdvice()}
+            onClick={() => setRefreshNonce((value) => value + 1)}
             variant="ghost"
           >
             <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />

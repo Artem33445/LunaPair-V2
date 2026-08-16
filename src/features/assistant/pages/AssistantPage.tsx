@@ -23,10 +23,9 @@ const draftKey = "lunapair-assistant-draft";
 export function AssistantPage() {
   const { cycles, profile, dailyLogs } = useAppStore();
   const [question, setQuestion] = useState(() => localStorage.getItem(draftKey) ?? "");
-  const [useContext, setUseContext] = useState(true);
+  const [useContext] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
-  const [lastQuestion, setLastQuestion] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem(storageKey);
@@ -65,7 +64,6 @@ export function AssistantPage() {
   }, [question]);
 
   async function answer(text: string) {
-    setLastQuestion(text);
     setIsThinking(true);
     setQuestion("");
     
@@ -84,7 +82,7 @@ export function AssistantPage() {
           }
         );
         setMessages((current) => [...current, { role: "model", content: responseText }]);
-      } catch (error) {
+      } catch {
         setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с AI. Проверьте ваш API-ключ в настройках или интернет-соединение." }]);
       }
       setStreamingResponse("");
@@ -103,8 +101,6 @@ export function AssistantPage() {
     localStorage.removeItem(storageKey);
     setMessages([{ role: "model", content: "История диалога очищена." }]);
   }
-
-  const lastAssistant = [...messages].reverse().find((message) => message.role === "model");
 
   return (
     <div className="space-y-5">

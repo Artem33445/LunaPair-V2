@@ -32,23 +32,16 @@ const wellbeing = ["very-bad", "bad", "normal", "good", "excellent"] as const;
 const energyLevels = ["very-low", "low", "normal", "high", "very-high"] as const;
 const sleepQuality = ["bad", "normal", "good"] as const;
 
-const moodTranslations: Record<Mood, string> = {
-  good: "Хорошее",
-  calm: "Спокойное",
-  energetic: "Энергичное",
-  happy: "Счастливое",
-  tired: "Усталое",
-  tense: "Напряжённое",
-  sensitive: "Чувствительное",
-  changeable: "Переменчивое",
-  irritated: "Раздражённое",
-  anxious: "Тревожное",
-  sad: "Грустное"
-};
 const moodEmojis: Record<Mood, string> = {
   good: "🙂", calm: "😌", energetic: "🤩", sensitive: "🥺", changeable: "🎢", irritated: "😤", anxious: "😰", sad: "😢",
   happy: "😊", tired: "😴", tense: "😬"
 };
+
+type AssistantInsightKey = keyof typeof ru.assistantInsights;
+
+function isAssistantInsightKey(key: string): key is AssistantInsightKey {
+  return key in ru.assistantInsights;
+}
 const wellbeingEmojis: Record<WellbeingLevel, string> = {
   "very-bad": "🤒", bad: "🤕", normal: "😐", good: "🙂", excellent: "🤩"
 };
@@ -99,8 +92,8 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
   }
 
   function triggerInsight(key: string) {
-    if (key in ru.assistantInsights) {
-      setInsight((ru.assistantInsights as any)[key]);
+    if (isAssistantInsightKey(key)) {
+      setInsight(ru.assistantInsights[key]);
       setTimeout(() => setInsight(null), 5000);
     }
   }

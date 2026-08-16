@@ -154,7 +154,7 @@ export async function sendChatMessageStream(
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-flash-latest", systemInstruction: SYSTEM_PROMPT });
 
-  let validHistory = [...history];
+  const validHistory = [...history];
   while (validHistory.length > 0 && validHistory[0].role !== "user") {
     validHistory.shift();
   }
@@ -178,6 +178,6 @@ export async function sendChatMessageStream(
     return fullResponse;
   } catch (error) {
     console.error("AI Chat Error:", error);
-    throw new Error("Ошибка связи с AI. Проверьте API ключ и интернет.");
+    throw new Error("Ошибка связи с AI. Проверьте API ключ и интернет.", { cause: error });
   }
 }

@@ -1,6 +1,5 @@
 import { repositories as localRepos } from "../db/repositories/localRepositories";
 import { getRepositories } from "../db/repositories";
-import type { AppProfile } from "../types";
 
 export async function migrateLocalToFirebaseIfNeeded(uid: string) {
   const firebaseRepos = getRepositories(uid);

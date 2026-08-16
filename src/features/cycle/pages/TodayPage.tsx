@@ -1,9 +1,9 @@
 import { format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
 import { MessageCircle, Moon, ShieldCheck, Sun } from "lucide-react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
-import { Card } from "../../../components/ui/card";
 import { ru } from "../../../i18n/ru";
 import { todayIso } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
@@ -24,7 +24,10 @@ const phaseLegendItems = [
 export function TodayPage() {
   const { profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
   const navigate = useNavigate();
-  const prediction = predictCycle(cycles, new Date(), profile?.averageCycleLength, profile?.averagePeriodLength);
+  const prediction = useMemo(
+    () => predictCycle(cycles, new Date(), profile?.averageCycleLength, profile?.averagePeriodLength),
+    [cycles, profile?.averageCycleLength, profile?.averagePeriodLength]
+  );
   const daysToPeriod = daysUntil(prediction.predictedNextPeriodStart);
   const daysDelayed = prediction.pendingExpectation?.daysDelayed ?? 0;
   const periodStatusText =

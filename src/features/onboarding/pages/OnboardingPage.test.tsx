@@ -8,8 +8,13 @@ describe("onboarding", () => {
     localStorage.setItem("lunapair-splash", "seen");
   });
 
+  async function continueLocally() {
+    await userEvent.click(screen.getByRole("button", { name: /продолжить локально/i }));
+  }
+
   it("selects role and opens tracker onboarding", async () => {
     render(<OnboardingPage />);
+    await continueLocally();
     await userEvent.click(screen.getByRole("radio", { name: /я девушка/i }));
     await userEvent.click(screen.getByRole("button", { name: /продолжить/i }));
     expect(screen.getByText(/как к тебе обращаться/i)).toBeInTheDocument();
@@ -17,6 +22,7 @@ describe("onboarding", () => {
 
   it("switches to partner onboarding", async () => {
     render(<OnboardingPage />);
+    await continueLocally();
     await userEvent.click(screen.getByRole("radio", { name: /я парень/i }));
     await userEvent.click(screen.getByRole("button", { name: /продолжить/i }));
     expect(screen.getByText(/режим партнёра/i)).toBeInTheDocument();
@@ -24,6 +30,7 @@ describe("onboarding", () => {
 
   it("does not allow tracker onboarding to continue without a name", async () => {
     render(<OnboardingPage />);
+    await continueLocally();
     await userEvent.click(screen.getByRole("radio", { name: /я девушка/i }));
     await userEvent.click(screen.getByRole("button", { name: /продолжить/i }));
 

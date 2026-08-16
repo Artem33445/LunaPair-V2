@@ -306,7 +306,13 @@ const GlobalSpotlight = ({
   enabled = true,
   spotlightRadius = DEFAULT_SPOTLIGHT_RADIUS,
   glowColor = DEFAULT_GLOW_COLOR
-}: any) => {
+}: {
+  gridRef: React.RefObject<HTMLDivElement | null>;
+  disableAnimations?: boolean;
+  enabled?: boolean;
+  spotlightRadius?: number;
+  glowColor?: string;
+}) => {
   const spotlightRef = useRef<HTMLDivElement | null>(null);
   const isInsideSection = useRef(false);
 
@@ -346,7 +352,7 @@ const GlobalSpotlight = ({
         rect && e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
 
       isInsideSection.current = mouseInside || false;
-      const cards = gridRef.current.querySelectorAll('.magic-bento-card');
+      const cards = gridRef.current.querySelectorAll<HTMLElement>('.magic-bento-card');
 
       if (!mouseInside) {
         gsap.to(spotlightRef.current, {
@@ -354,7 +360,7 @@ const GlobalSpotlight = ({
           duration: 0.3,
           ease: 'power2.out'
         });
-        cards.forEach((card: any) => {
+        cards.forEach((card) => {
           card.style.setProperty('--glow-intensity', '0');
         });
         return;
@@ -363,8 +369,7 @@ const GlobalSpotlight = ({
       const { proximity, fadeDistance } = calculateSpotlightValues(spotlightRadius);
       let minDistance = Infinity;
 
-      cards.forEach((card: any) => {
-        const cardElement = card;
+      cards.forEach((cardElement) => {
         const cardRect = cardElement.getBoundingClientRect();
         const centerX = cardRect.left + cardRect.width / 2;
         const centerY = cardRect.top + cardRect.height / 2;
@@ -407,7 +412,7 @@ const GlobalSpotlight = ({
 
     const handleMouseLeave = () => {
       isInsideSection.current = false;
-      gridRef.current?.querySelectorAll('.magic-bento-card').forEach((card: any) => {
+      gridRef.current?.querySelectorAll<HTMLElement>('.magic-bento-card').forEach((card) => {
         card.style.setProperty('--glow-intensity', '0');
       });
       if (spotlightRef.current) {
@@ -432,7 +437,7 @@ const GlobalSpotlight = ({
   return null;
 };
 
-const BentoCardGrid = ({ children, gridRef, className = "" }: { children: ReactNode; gridRef: any; className?: string }) => (
+const BentoCardGrid = ({ children, gridRef, className = "" }: { children: ReactNode; gridRef: React.RefObject<HTMLDivElement | null>; className?: string }) => (
   <div className={`card-grid bento-section ${className}`} ref={gridRef}>
     {children}
   </div>

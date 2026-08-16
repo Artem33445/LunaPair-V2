@@ -43,10 +43,12 @@ export function OnboardingPage() {
   const authUser = useAppStore((state) => state.authUser);
   useEffect(() => {
     if (stage === "auth" && authUser) {
-      if (authUser.displayName && !name) {
-        setName(authUser.displayName);
-      }
-      setStage("role");
+      window.queueMicrotask(() => {
+        if (authUser.displayName && !name) {
+          setName(authUser.displayName);
+        }
+        setStage("role");
+      });
     }
   }, [stage, authUser, name]);
 
@@ -171,7 +173,7 @@ export function OnboardingPage() {
                     setName(user.displayName);
                   }
                   setStage("role");
-                } catch (e) {
+                } catch {
                   setValidationMessage("Не удалось войти. Попробуйте еще раз.");
                 } finally {
                   setIsLoggingIn(false);

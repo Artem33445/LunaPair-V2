@@ -1,5 +1,4 @@
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Card } from "../../../components/ui/card";
 import { averagePeriodLength, predictCycle } from "../../cycle/domain/cycleCalculations";
 import { buildCycleIntervals } from "../../cycle/domain/cyclePredictionService";
 import { useAppStore } from "../../../stores/appStore";

@@ -22,8 +22,9 @@ describe("cycle prediction service", () => {
       generatedAt: new Date("2026-07-14T12:00:00")
     });
     expect(prediction.predictedNextPeriodStart).toBe("2026-08-11");
-    expect(getCalendarDayInfo("2026-07-29", cycles, 28, 5).isPredictedPeriod).toBe(false);
-    expect(getCalendarDayInfo("2026-08-11", cycles, 28, 5).isPredictedPeriod).toBe(true);
+    const generatedAt = new Date("2026-07-14T12:00:00");
+    expect(getCalendarDayInfo("2026-07-29", cycles, 28, 5, generatedAt).isPredictedPeriod).toBe(false);
+    expect(getCalendarDayInfo("2026-08-11", cycles, 28, 5, generatedAt).isPredictedPeriod).toBe(true);
   });
 
   it("excludes suspicious one-day intervals from forecast", () => {

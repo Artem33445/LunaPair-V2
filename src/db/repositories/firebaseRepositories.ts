@@ -209,7 +209,7 @@ export class FirebasePartnerConnectionRepository implements PartnerConnectionRep
     return invite;
   }
 
-  async connectWithCode(code: string) {
+  async connectWithCode(_code: string) {
     const timestamp = new Date().toISOString();
     const connection: PartnerConnection = {
       id: "partner_connection",
