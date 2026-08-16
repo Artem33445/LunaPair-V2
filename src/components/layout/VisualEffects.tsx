@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const actionEffectRadius = 160;
+const actionEffectRadius = 48;
 const nudgeDistance = 1.75;
 
 function distanceToAction(pointX: number, pointY: number, rect: DOMRect) {

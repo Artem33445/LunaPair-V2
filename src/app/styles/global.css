@@ -160,7 +160,7 @@ body::before {
 }
 
 .app-nearby-action-pulse {
-  animation: appNearbyActionPulse 300ms ease-out;
+  animation: appNearbyActionPulse 420ms ease-in-out;
 }
 
 @keyframes appNearbyActionPulse {
