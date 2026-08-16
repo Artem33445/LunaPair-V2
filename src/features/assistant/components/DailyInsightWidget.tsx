@@ -17,7 +17,7 @@ export function DailyInsightWidget({ profile, cycleDay, phase, recentLogs }: Pro
 
   useEffect(() => {
     if (!profile.geminiApiKey) {
-      setInsight("Чтобы получать персональные советы от ИИ, добавьте API-ключ в настройках.");
+      setInsight("Чтобы получать персональные советы от AI, добавьте API-ключ в настройках.");
       return;
     }
 
@@ -56,7 +56,7 @@ export function DailyInsightWidget({ profile, cycleDay, phase, recentLogs }: Pro
       <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-primary/10 blur-2xl"></div>
       <div className="relative h-full rounded-[calc(1.5rem-1px)] bg-card/60 p-5 backdrop-blur-xl">
         <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-primary">
-          <Bot className="h-5 w-5" /> Совет от Luna ИИ
+          <Bot className="h-5 w-5" /> Совет от Luna AI
         </h3>
         
         {isLoading ? (

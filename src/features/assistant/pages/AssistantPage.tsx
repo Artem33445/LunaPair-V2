@@ -85,7 +85,7 @@ export function AssistantPage() {
         );
         setMessages((current) => [...current, { role: "model", content: responseText }]);
       } catch (error) {
-        setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с ИИ. Проверьте ваш API-ключ в настройках или интернет-соединение." }]);
+        setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с AI. Проверьте ваш API-ключ в настройках или интернет-соединение." }]);
       }
       setStreamingResponse("");
       setIsThinking(false);
@@ -112,7 +112,7 @@ export function AssistantPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2"><Bot className="w-8 h-8 text-primary" />Умный ассистент Luna</h1>
           <p className="text-muted">
-            {hasApiKey ? "Подключён ИИ-ассистент" : "Локальный режим без ИИ"}
+            {hasApiKey ? "Подключён AI-ассистент" : "Локальный режим без AI"}
           </p>
         </div>
         <Button variant="outline" onClick={clearHistory}>
@@ -125,8 +125,8 @@ export function AssistantPage() {
         <div className="rounded-2xl border border-coral/40 bg-coral/10 p-4 mb-4 flex items-start gap-3">
           <KeyRound className="w-5 h-5 text-coral mt-0.5 shrink-0" />
           <div>
-            <h3 className="font-bold text-coral">Включите полноценный ИИ</h3>
-            <p className="text-sm text-coral mt-1">Сейчас работает простой скрипт-ответчик. Чтобы Luna отвечала умнее, добавьте API-ключ ИИ.</p>
+            <h3 className="font-bold text-coral">Включите полноценный AI</h3>
+            <p className="text-sm text-coral mt-1">Сейчас работает простой скрипт-ответчик. Чтобы Luna отвечала умнее, добавьте API-ключ AI.</p>
             <Button asChild variant="outline" className="mt-3 border-coral text-coral hover:bg-coral/20">
               <Link to="/profile">Перейти в настройки</Link>
             </Button>
@@ -137,7 +137,7 @@ export function AssistantPage() {
       <Card className="glass-panel flex flex-col h-[calc(100vh-14rem)] min-h-[500px]">
         <div className="mb-4 rounded-2xl bg-primarySoft p-3 text-sm text-muted flex gap-2">
            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-           Luna не заменяет врача. Приватные заметки, интимные данные и ваше имя не передаются в ИИ.
+           Luna не заменяет врача. Приватные заметки, интимные данные и ваше имя не передаются в AI.
         </div>
         
         <div className="mb-4 flex flex-wrap gap-2">

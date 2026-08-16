@@ -84,6 +84,6 @@ export async function sendChatMessageStream(
     return fullResponse;
   } catch (error) {
     console.error("AI Chat Error:", error);
-    throw new Error("Ошибка связи с ИИ. Проверьте API ключ и интернет.");
+    throw new Error("Ошибка связи с AI. Проверьте API ключ и интернет.");
   }
 }

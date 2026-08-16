@@ -132,7 +132,7 @@ export function ProfilePage() {
           <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">{sync.message}</p>
           <div className="mt-4 pt-4 border-t border-border space-y-4">
             <div>
-              <FieldLabel htmlFor="ai-key">API-ключ ИИ</FieldLabel>
+              <FieldLabel htmlFor="ai-key">API-ключ AI</FieldLabel>
               <div className="flex gap-2 mt-1">
                 <Input
                   id="ai-key"
@@ -148,7 +148,7 @@ export function ProfilePage() {
                 )}
               </div>
               <p className="mt-1 text-xs text-muted">
-                Ваш ключ хранится только на вашем устройстве и используется для ответов ИИ.
+                Ваш ключ хранится только на вашем устройстве и используется для ответов AI.
               </p>
             </div>
             <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
