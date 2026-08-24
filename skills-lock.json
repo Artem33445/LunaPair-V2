@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "discovery-interview": {
+      "source": "parcadei/Continuous-Claude-v3",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/discovery-interview/SKILL.md",
+      "computedHash": "934f3f1a7dd3a35e3a74f5716242ca2642a0efc6bee4f0c5f8b2233d7aefa9f3"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
+    },
+    "react": {
+      "source": "lobehub/lobehub",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/react/SKILL.md",
+      "computedHash": "3dce247fa28ede7bd87bccfa1ff17863f2aa3056bee288bdd5c4e62b03008aad"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "7e3c9cd74e9e2b4828527a857170e86310f2dab5ea8030a9043df2c7e6c88857"
+    }
+  }
+}

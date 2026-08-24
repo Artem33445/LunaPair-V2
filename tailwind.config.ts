@@ -32,6 +32,7 @@ export default {
       },
       fontFamily: {
         sans: [
+          "Unbounded",
           "Inter",
           "ui-sans-serif",
           "system-ui",

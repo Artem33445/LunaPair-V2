@@ -104,7 +104,7 @@ export function TodayPage() {
 
   return (
     <div className="space-y-5">
-      <header className="flex items-start justify-between gap-3">
+      <header className="flex items-start justify-between gap-3 relative z-10 pt-1">
         <div>
           <p className="text-sm text-muted">{format(new Date(), "d MMMM, EEEE", { locale: localeRu })}</p>
           <h1 className="text-3xl font-bold">{name ? `Привет, ${name}` : "Привет!"}</h1>

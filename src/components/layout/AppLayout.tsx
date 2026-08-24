@@ -4,8 +4,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import { useAppStore } from "../../stores/appStore";
 import { Button } from "../ui/button";
-// @ts-expect-error LightPillar doesn't have types
-import LightPillar from "../ui/LightPillar";
+import { Scene } from "../3d/Scene";
 
 const trackerNav = [
   { to: "/today", label: "Сегодня", icon: Home, trackerOnly: true },
@@ -35,20 +34,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell relative">
       {!disableAnimatedBg && (
-        <div className="fixed inset-0 -z-10 hidden lg:block overflow-hidden pointer-events-none">
-          <LightPillar
-            topColor={theme === "light" ? "#e0c3fc" : "#b03ae2"}
-            bottomColor={theme === "light" ? "#ffd1ff" : "#c43cf9"}
-            intensity={0.8}
-            rotationSpeed={0.7}
-            glowAmount={0.001}
-            pillarWidth={5.9}
-            pillarHeight={0.4}
-            noiseIntensity={0.5}
-            pillarRotation={85}
-            interactive={false}
-            mixBlendMode="normal"
-          />
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <Scene color={theme === "light" ? "hsl(280, 50%, 65%)" : "hsl(280, 40%, 40%)"} intensity={0.4} />
         </div>
       )}
       <aside className="glass-panel fixed left-0 top-0 z-30 hidden h-dvh w-72 border-r border-border p-5 pt-[max(1.25rem,var(--safe-top))] lg:block">
@@ -72,7 +59,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         ) : null}
       </aside>
 
-      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1rem)] pt-[max(1.25rem,var(--safe-top))] md:pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1.5rem)] md:pt-8 lg:ml-72 lg:pb-8">
+      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1rem)] pt-[max(0.75rem,var(--safe-top))] md:pb-[calc(var(--mobile-nav-height)+var(--safe-bottom)+1.5rem)] md:pt-4 lg:ml-72 lg:pb-8">
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-4 sm:px-6 lg:px-8">
           {children}
         </div>
