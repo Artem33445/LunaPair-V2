@@ -257,14 +257,8 @@ async function generateAndSaveAdvice(
 ): Promise<PersonalAdviceResult> {
   const adviceRepository = getRepositories(params.uid).advice;
 
-  if (!params.profile.geminiApiKey) {
-    const advice = buildAdvicePackage(hash, "fallback", fallbackAdvice(context));
-    await adviceRepository.save(advice);
-    return { advice, fromCache: false, stale: false, fallbackReason: "missing-api-key" };
-  }
-
   try {
-    const generated = await generateStructuredAdvice(params.profile.geminiApiKey, context);
+    const generated = await generateStructuredAdvice(context);
     const advice = buildAdvicePackage(hash, "ai", validateGeneratedAdvice(generated));
     await adviceRepository.save(advice);
     return { advice, fromCache: false, stale: false };
@@ -291,11 +285,11 @@ export async function getPersonalAdvice(params: PersonalAdviceParams): Promise<P
   const hash = contextHash(context);
   const cached = await adviceRepository.getLatest();
 
-  if (isFresh(cached, hash) && (cached?.source === "ai" || !params.profile.geminiApiKey)) {
+  if (isFresh(cached, hash) && cached?.source === "ai") {
     return { advice: cached!, fromCache: true, stale: false };
   }
 
-  const pendingKey = `${params.uid ?? "local"}:${hash}:${Boolean(params.profile.geminiApiKey)}`;
+  const pendingKey = `${params.uid ?? "local"}:${hash}`;
   const pending = pendingAdviceRequests.get(pendingKey);
   if (pending) return pending;
 

@@ -53,7 +53,6 @@ interface AppState {
   setSupportPreferences: (preferences: PartnerSupportPreferences) => Promise<void>;
   setHidePrivateMarkers: (hidden: boolean) => Promise<void>;
   setDisableAnimatedBackground: (disabled: boolean) => Promise<void>;
-  setAiApiKey: (key: string | undefined) => Promise<void>;
   startPeriod: (date?: string) => Promise<void>;
   endPeriod: (date?: string) => Promise<void>;
   saveDailyLog: (log: DailyLogInput) => Promise<void>;
@@ -360,14 +359,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const updated = { ...profile, disableAnimatedBackground: disabled, updatedAt: now() };
     await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated });
-  },
-
-  setAiApiKey: async (key) => {
-    const profile = get().profile;
-    if (!profile) return;
-    const updated = { ...profile, geminiApiKey: key, updatedAt: now() };
-    await getRepositories(get().authUser?.uid).profile.save(updated);
-    set({ profile: updated, toast: key ? "API ключ сохранен" : "API ключ удален" });
   },
 
   startPeriod: async (date = todayIso()) => {

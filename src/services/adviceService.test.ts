@@ -70,7 +70,6 @@ const profile: AppProfile = {
     partnerDisconnected: false,
     updatedAt: "2026-08-16T00:00:00.000Z"
   },
-  geminiApiKey: "secret-key",
   createdAt: "2026-08-16T00:00:00.000Z",
   updatedAt: "2026-08-16T00:00:00.000Z"
 };

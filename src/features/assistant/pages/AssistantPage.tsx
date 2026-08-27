@@ -1,12 +1,11 @@
-import { Send, Trash2, Bot, AlertTriangle, KeyRound } from "lucide-react";
-import { useEffect, useMemo, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Send, Trash2, Bot, AlertTriangle } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/field";
 import { useAppStore } from "../../../stores/appStore";
 import { sendChatMessageStream, type ChatMessage } from "../../../services/aiService";
-import { buildAssistantResponse } from "../domain/assistantEngine";
+import { predictCycle } from "../../cycle/domain/cycleCalculations";
 
 const quickQuestions = [
   "Как рассчитывается следующая дата?",
@@ -23,7 +22,6 @@ const draftKey = "lunapair-assistant-draft";
 export function AssistantPage() {
   const { cycles, profile, dailyLogs } = useAppStore();
   const [question, setQuestion] = useState(() => localStorage.getItem(draftKey) ?? "");
-  const [useContext] = useState(true);
   const [isThinking, setIsThinking] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -31,28 +29,16 @@ export function AssistantPage() {
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
-        return JSON.parse(saved) as ChatMessage[];
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(m => m && typeof m.role === 'string');
+        }
       } catch {
-        return [];
+        // Fallback
       }
     }
     return [{ role: "model", content: "Привет! Я Luna, твой персональный помощник по женскому здоровью. Ты можешь спрашивать меня о своем цикле, самочувствии или просить совета." }];
   });
-
-  const hasApiKey = Boolean(profile?.geminiApiKey);
-
-  // Local fallback context
-  const safeContext = useMemo(
-    () => ({
-      cycles,
-      logs: useContext ? dailyLogs.map(({ note: _note, intimacy: _intimacy, ...log }) => log) : [],
-      averageCycleLength: profile?.averageCycleLength ?? 28,
-      averagePeriodLength: profile?.averagePeriodLength ?? 5,
-      usePersonalContext: useContext,
-      recentMessages: messages.slice(-6).map((message) => `${message.role}: ${message.content.slice(0, 180)}`)
-    }),
-    [cycles, dailyLogs, messages, profile?.averageCycleLength, profile?.averagePeriodLength, useContext]
-  );
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(messages.slice(-20)));
@@ -70,31 +56,26 @@ export function AssistantPage() {
     setMessages((current) => [...current, { role: "user", content: text }]);
     setStreamingResponse("");
 
-    if (hasApiKey) {
-      try {
-        const responseText = await sendChatMessageStream(
-          profile!.geminiApiKey!, 
-          profile!, 
-          messages, 
-          text,
-          (chunk) => {
-            setStreamingResponse(chunk);
-          }
-        );
-        setMessages((current) => [...current, { role: "model", content: responseText }]);
-      } catch {
-        setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с AI. Проверьте ваш API-ключ в настройках или интернет-соединение." }]);
-      }
-      setStreamingResponse("");
-      setIsThinking(false);
-    } else {
-      // Local Fake Engine
-      window.setTimeout(() => {
-        const response = buildAssistantResponse(text, safeContext);
-        setMessages((current) => [...current, { role: "model", content: response.answer }]);
-        setIsThinking(false);
-      }, 500);
+    try {
+      const prediction = predictCycle(cycles, undefined, profile?.averageCycleLength ?? 28, profile?.averagePeriodLength ?? 5);
+
+      const responseText = await sendChatMessageStream(
+        profile!, 
+        messages, 
+        text,
+        (chunk) => {
+          setStreamingResponse(chunk);
+        },
+        prediction.cycleDay,
+        prediction.currentPhase,
+        dailyLogs.slice(-7)
+      );
+      setMessages((current) => [...current, { role: "model", content: responseText }]);
+    } catch {
+      setMessages((current) => [...current, { role: "model", content: "Произошла ошибка связи с AI. Проверьте интернет-соединение." }]);
     }
+    setStreamingResponse("");
+    setIsThinking(false);
   }
 
   function clearHistory() {
@@ -107,28 +88,13 @@ export function AssistantPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2"><Bot className="w-8 h-8 text-primary" />Умный ассистент Luna</h1>
-          <p className="text-muted">
-            {hasApiKey ? "Подключён AI-ассистент" : "Локальный режим без AI"}
-          </p>
+          <p className="text-muted">Подключён AI-ассистент</p>
         </div>
         <Button variant="outline" onClick={clearHistory}>
           <Trash2 className="h-4 w-4" />
           Очистить историю
         </Button>
       </header>
-
-      {!hasApiKey && (
-        <div className="rounded-2xl border border-coral/40 bg-coral/10 p-4 mb-4 flex items-start gap-3">
-          <KeyRound className="w-5 h-5 text-coral mt-0.5 shrink-0" />
-          <div>
-            <h3 className="font-bold text-coral">Включите полноценный AI</h3>
-            <p className="text-sm text-coral mt-1">Сейчас работает простой скрипт-ответчик. Чтобы Luna отвечала умнее, добавьте API-ключ AI.</p>
-            <Button asChild variant="outline" className="mt-3 border-coral text-coral hover:bg-coral/20">
-              <Link to="/profile">Перейти в настройки</Link>
-            </Button>
-          </div>
-        </div>
-      )}
 
       <Card className="glass-panel flex flex-col h-[calc(100vh-14rem)] min-h-[500px]">
         <div className="mb-4 rounded-2xl bg-primarySoft p-3 text-sm text-muted flex gap-2">
@@ -145,7 +111,7 @@ export function AssistantPage() {
         <div className="flex-1 overflow-y-auto space-y-3 rounded-card border border-border bg-card/60 p-3 mb-4">
           {messages.map((message, index) => (
             <div key={`${message.role}-${index}`} className={`rounded-2xl p-4 text-sm ${message.role === "model" ? "bg-primarySoft text-text mr-8" : "ml-auto bg-primary text-white md:max-w-[78%] ml-8"}`}>
-              {message.content.split("\n").map((line, i) => (
+              {(message.content || "").split("\n").map((line, i) => (
                 <p key={i} className="mb-1 last:mb-0">{line}</p>
               ))}
             </div>
