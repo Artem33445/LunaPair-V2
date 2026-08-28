@@ -233,6 +233,7 @@ export interface PartnerDashboardData {
   statistics?: PartnerStatisticsSummary;
   supportCard?: PartnerSupportCard;
   permissionsSummary: PartnerPermissionsSummary;
+  prediction?: PredictionResult;
 }
 
 export interface PredictionResult {

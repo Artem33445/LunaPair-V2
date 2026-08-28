@@ -102,7 +102,8 @@ export function buildPartnerDashboardData({
       ? buildPartnerStatistics(allowedLogs, permissions)
       : undefined,
     supportCard,
-    permissionsSummary: buildPermissionsSummary(permissions)
+    permissionsSummary: buildPermissionsSummary(permissions),
+    prediction: !blocked ? prediction : undefined
   };
 }
 

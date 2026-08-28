@@ -1,6 +1,7 @@
-import { addDays, addMonths, format, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addMonths, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Eye, HeartHandshake, LockKeyhole, LogOut, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Eye, Heart, HeartHandshake, LockKeyhole, LogOut, ShieldCheck, X } from "lucide-react";
+import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
@@ -11,13 +12,22 @@ import { useAppStore } from "../../../stores/appStore";
 import type { CyclePhase, EnergyLevel, PartnerDashboardData, PartnerVisibleDay } from "../../../types";
 import { buildPartnerDashboardData } from "../domain/partnerDashboard";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
+import { CycleRing } from "../../cycle/components/CycleRing";
 
 const phaseClasses: Record<CyclePhase, string> = {
   menstrual: "bg-[hsl(var(--phase-menstrual)/0.55)]",
-  follicular: "bg-[hsl(var(--phase-follicular)/0.45)]",
-  fertile: "bg-[hsl(var(--phase-fertile)/0.45)]",
+  follicular: "bg-[hsl(var(--phase-follicular)/0.55)]",
+  fertile: "bg-[hsl(var(--phase-fertile)/0.55)]",
   ovulation: "bg-[hsl(var(--phase-ovulation)/0.55)]",
-  luteal: "bg-[hsl(var(--phase-luteal)/0.45)]"
+  luteal: "bg-[hsl(var(--phase-luteal)/0.55)]"
+};
+
+const phaseAccent: Record<CyclePhase, string> = {
+  menstrual: "bg-[hsl(var(--phase-menstrual)/0.7)]",
+  follicular: "bg-[hsl(var(--phase-follicular)/0.48)]",
+  fertile: "bg-[hsl(var(--phase-fertile)/0.58)]",
+  ovulation: "bg-[hsl(var(--phase-ovulation)/0.7)]",
+  luteal: "bg-[hsl(var(--phase-luteal)/0.48)]"
 };
 
 const energyText: Record<EnergyLevel, string> = {
@@ -102,6 +112,22 @@ export function PartnerPage() {
     return <BlockedState title="Партнёрский доступ отключён" text="В локальном preview новые данные больше не показываются." />;
   }
 
+  if (view === "calendar") {
+    return (
+      <>
+        <PartnerCalendar
+          dashboard={dashboard}
+          month={month}
+          setMonth={setMonth}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          onBack={() => navigate("/partner")}
+        />
+        {selectedDay ? <DayDetails day={selectedDay} onClose={() => setSelectedDate(undefined)} /> : null}
+      </>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PartnerHeader
@@ -111,26 +137,21 @@ export function PartnerPage() {
       />
 
       {view === "today" ? (
-        <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <motion.div 
+          className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="space-y-5">
             <CycleSummary dashboard={dashboard} />
             <PartnerEmpathyCard phase={dashboard.currentPhase} />
           </div>
           <TodayWellbeing today={dashboard.today} />
-        </div>
+        </motion.div>
       ) : null}
 
       {view === "support" ? <SupportView dashboard={dashboard} /> : null}
-
-      {view === "calendar" ? (
-        <PartnerCalendar
-          dashboard={dashboard}
-          month={month}
-          setMonth={setMonth}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-        />
-      ) : null}
 
       {view === "history" ? (
         <div className="grid gap-5 lg:grid-cols-2">
@@ -180,6 +201,11 @@ function PartnerHeader({ dashboard, onPermissions, onExit }: { dashboard: Partne
 }
 
 function CycleSummary({ dashboard }: { dashboard: PartnerDashboardData }) {
+  const navigate = useNavigate();
+  const nextPhaseText = dashboard.prediction?.futureProjections?.[0]
+    ? `Следующий ожидаемый этап начнется примерно ${formatShort(dashboard.prediction.futureProjections[0].predictedStartDate)}`
+    : undefined;
+
   return (
     <MagicBento
       gridClassName="grid-cols-1"
@@ -193,11 +219,28 @@ function CycleSummary({ dashboard }: { dashboard: PartnerDashboardData }) {
                 <h2 className="text-xl font-bold">Текущий цикл</h2>
                 <p className="text-sm text-muted">Показываются только открытые категории.</p>
               </div>
-              <CalendarDays className="h-7 w-7 text-primary" />
+              <button 
+                onClick={() => navigate("/partner/calendar")}
+                className="rounded-full p-2 hover:bg-primarySoft/50 transition-colors"
+                title="Открыть календарь"
+              >
+                <CalendarDays className="h-7 w-7 text-primary" />
+              </button>
             </div>
+
+            {dashboard.prediction ? (
+              <div className="py-4">
+                <CycleRing prediction={dashboard.prediction} />
+              </div>
+            ) : null}
+
             <div className="grid gap-3 sm:grid-cols-2">
-              <Metric label="День цикла" value={dashboard.currentCycleDay ? `${dashboard.currentCycleDay}-й день` : undefined} />
-              <Metric label="Фаза" value={dashboard.currentPhase ? ru.phase[dashboard.currentPhase] : undefined} />
+              {!dashboard.prediction && (
+                <>
+                  <Metric label="День цикла" value={dashboard.currentCycleDay ? `${dashboard.currentCycleDay}-й день` : undefined} />
+                  <Metric label="Фаза" value={dashboard.currentPhase ? ru.phase[dashboard.currentPhase] : undefined} />
+                </>
+              )}
               <Metric
                 label="До предполагаемых месячных"
                 value={dashboard.daysUntilPredictedPeriod !== undefined ? `около ${dashboard.daysUntilPredictedPeriod} дн.` : undefined}
@@ -207,7 +250,15 @@ function CycleSummary({ dashboard }: { dashboard: PartnerDashboardData }) {
                 value={dashboard.predictedRange ? `${formatShort(dashboard.predictedRange.start)} — ${formatShort(dashboard.predictedRange.end)}` : undefined}
               />
             </div>
-            <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">
+
+            {nextPhaseText && (
+              <div className="mt-4 flex items-center gap-3 rounded-2xl bg-card/60 p-3 shadow-sm border border-border">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <p className="text-sm font-semibold">{nextPhaseText}</p>
+              </div>
+            )}
+
+            <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted mt-4">
               Уверенность прогноза: {dashboard.confidence ? confidenceLabel(dashboard.confidence) : "информация закрыта"}. Данные и прогнозы LunaPair помогают замечать закономерности, но не являются медицинским диагнозом.
             </p>
           </div>
@@ -299,14 +350,19 @@ function PartnerCalendar({
   month,
   setMonth,
   selectedDate,
-  setSelectedDate
+  setSelectedDate,
+  onBack
 }: {
   dashboard: PartnerDashboardData;
   month: Date;
   setMonth: (date: Date) => void;
   selectedDate?: string;
   setSelectedDate: (date: string) => void;
+  onBack: () => void;
 }) {
+  const theme = useAppStore((state) => state.profile?.theme);
+  const today = new Date();
+
   if (!dashboard.calendarDays.length) {
     return (
       <MagicBento
@@ -321,62 +377,95 @@ function PartnerCalendar({
   }
 
   return (
-    <MagicBento
-      gridClassName="grid-cols-1"
-      enableTilt={false}
-      enableMagnetism={false}
-      items={[{
-        id: "calendar",
-        className: "!overflow-visible",
-        content: (
-          <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold">Календарь партнёра</h2>
-                <p className="text-sm text-muted">Дни открываются только для просмотра.</p>
-              </div>
-              <div className="flex gap-2">
-                <Button aria-label="Предыдущий месяц" size="icon" variant="outline" onClick={() => setMonth(addMonths(month, -1))}>
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Button variant="outline" onClick={() => setMonth(startOfMonth(new Date()))}>Сегодня</Button>
-                <Button aria-label="Следующий месяц" size="icon" variant="outline" onClick={() => setMonth(addMonths(month, 1))}>
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
+    <div className="flex flex-1 flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col pb-2 pt-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <Button size="icon" variant="ghost" onClick={onBack} aria-label="Назад">
+                <ArrowLeft className="h-6 w-6" />
+              </Button>
+              <h2 className="text-2xl font-bold capitalize tracking-normal">{format(month, "LLLL yyyy", { locale: localeRu })}</h2>
             </div>
-            <h3 className="mb-3 text-lg font-bold capitalize">{format(month, "LLLL yyyy", { locale: localeRu })}</h3>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted sm:gap-2">
-              {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => <span key={day}>{day}</span>)}
+            <div className="flex items-center gap-1">
+              <Button aria-label="Предыдущий месяц" size="icon" variant="outline" className="h-8 w-8" onClick={() => setMonth(addMonths(month, -1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="h-8 px-3 text-xs" onClick={() => setMonth(startOfMonth(new Date()))}>Сегодня</Button>
+              <Button aria-label="Следующий месяц" size="icon" variant="outline" className="h-8 w-8" onClick={() => setMonth(addMonths(month, 1))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="mt-2 grid grid-cols-7 gap-1 sm:gap-2">
-              {dashboard.calendarDays.map((day) => (
-                <button
-                  key={day.date}
-                  type="button"
-                  className={cn(
-                    "relative aspect-square rounded-xl border p-1 text-sm font-semibold transition focus-visible:ring-2 focus-visible:ring-primary",
-                    day.phase ? phaseClasses[day.phase] : "bg-card",
-                    !isSameMonth(parseISO(day.date), month) && "opacity-45",
-                    selectedDate === day.date ? "border-primary ring-2 ring-primary" : "border-border"
-                  )}
-                  onClick={() => setSelectedDate(day.date)}
-                  aria-label={`${format(parseISO(day.date), "d MMMM", { locale: localeRu })}. Открыть день только для просмотра`}
-                >
-                  {format(parseISO(day.date), "d")}
-                  {day.isConfirmedPeriodDay ? <span className="absolute inset-x-1 bottom-1 h-1 rounded-full bg-coral" aria-hidden /> : null}
-                  {day.isPredictedPeriodDay ? <span className="absolute inset-1 rounded-lg border border-dashed border-coral" aria-hidden /> : null}
-                  {day.isFertileWindow ? <span className="absolute inset-x-1 top-1 h-1 rounded-full bg-success" aria-hidden /> : null}
-                  {day.isPredictedOvulation ? <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-warning" aria-hidden /> : null}
-                  {day.hasPrivateMarker ? <span className="absolute left-1 top-1 h-2 w-2 rounded-full bg-primary" aria-label="Есть приватная отметка" /> : null}
-                </button>
-              ))}
-            </div>
-            <p className="mt-4 text-xs text-muted">{ru.fertileWarning}</p>
-          </>
-        )
-      }]}
-    />
+          </div>
+          <div className="text-sm font-medium text-muted">
+            Режим партнёра
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => (
+            <span key={day} className={cn((day === "Сб" || day === "Вс") && "text-[hsl(var(--calendar-weekend-text))]")}>{day}</span>
+          ))}
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <MagicBento
+            gridClassName="mt-2 grid-cols-7 grid-rows-6 gap-1 sm:gap-2 flex-1 min-h-0"
+            enableTilt={true}
+            enableMagnetism={true}
+            glowColor={theme === "dark" ? "132, 0, 255" : "150, 100, 255"}
+            items={dashboard.calendarDays.map((day) => {
+              const dayDate = parseISO(day.date);
+              const selected = selectedDate === day.date;
+              const todayDate = isSameDay(dayDate, today);
+              const weekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
+              const isCurrentMonth = isSameMonth(dayDate, month);
+              const hasLog = day.wellbeing || day.mood || day.notePreview || day.symptoms?.length;
+
+              return {
+                id: day.date,
+                className: cn(
+                  "group relative isolate !min-h-0 !p-0 overflow-hidden rounded-xl border transition-all duration-200 active:scale-[0.95] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
+                  "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
+                  weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
+                  isCurrentMonth ? "border-border" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-50",
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
+                  selected && "scale-[1.03] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]"
+                ),
+                content: (
+                  <button
+                    onClick={() => setSelectedDate(day.date)}
+                    className="absolute inset-0 flex h-full w-full items-center justify-center outline-none"
+                    aria-label={`${format(dayDate, "d MMMM", { locale: localeRu })}. Открыть день только для просмотра`}
+                  >
+                    {isCurrentMonth ? (
+                      <>
+                        {day.phase ? <span aria-hidden className={cn("absolute inset-x-2 top-1 h-0.5 rounded-full", phaseAccent[day.phase])} /> : null}
+                        {weekend ? <span aria-hidden className="absolute inset-x-2 top-2.5 h-px rounded-full bg-warning/45" /> : null}
+                        {day.isFertileWindow ? <span aria-hidden className="absolute inset-x-1.5 bottom-1.5 h-1 rounded-full bg-[hsl(var(--phase-fertile)/0.35)]" /> : null}
+                        {day.isPredictedPeriodDay && !day.isConfirmedPeriodDay ? (
+                          <span aria-hidden className="absolute inset-1.5 rounded-xl border border-dashed border-coral/70 bg-[hsl(var(--coral)/0.08)]" />
+                        ) : null}
+                        {day.isConfirmedPeriodDay ? <span aria-hidden className="absolute inset-1 rounded-xl bg-coral/20 ring-1 ring-coral/35" /> : null}
+                        {day.isPredictedOvulation ? <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[hsl(var(--phase-ovulation))] shadow-[0_0_0_3px_hsl(var(--phase-ovulation)/0.2)]" /> : null}
+                      </>
+                    ) : null}
+                    
+                    <span className={cn("relative z-10 text-sm font-semibold", day.isConfirmedPeriodDay && isCurrentMonth && "text-coral")}>{format(dayDate, "d")}</span>
+                    
+                    {isCurrentMonth && todayDate ? <span aria-hidden className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" /> : null}
+                    {isCurrentMonth && hasLog ? <span className="absolute bottom-1 left-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary" title="Есть запись" /> : null}
+                    {isCurrentMonth && day.hasPrivateMarker ? <Heart className="absolute right-1 top-4 z-10 h-3.5 w-3.5 text-coral" fill="currentColor" aria-label="Есть приватная запись" /> : null}
+                  </button>
+                )
+              };
+            })}
+          />
+        </div>
+        <div className="mt-4 flex flex-col gap-1 shrink-0 px-2 sm:px-0">
+          <p className="text-xs text-muted">{ru.fertileWarning}</p>
+          <p className="text-xs text-muted">Все фазы и прогнозы рассчитываются приблизительно.</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -555,15 +644,15 @@ function PartnerEmpathyCard({ phase }: { phase?: CyclePhase }) {
       gridClassName="grid-cols-1"
       items={[{
         id: "empathy",
-        className: "bg-primarySoft",
+        className: cn("border-none text-white", phaseClasses[phase] || "bg-primary"),
         content: (
-          <>
-            <h2 className="flex items-center gap-2 text-xl font-bold text-primary">
+          <div className="relative overflow-hidden z-10">
+            <h2 className="flex items-center gap-2 text-xl font-bold">
               <HeartHandshake className="h-5 w-5" />
               Подсказка для тебя
             </h2>
-            <p className="mt-2 text-sm font-medium leading-relaxed">{ru.partnerTips[phase]}</p>
-          </>
+            <p className="mt-2 text-sm font-medium leading-relaxed opacity-90">{ru.partnerTips[phase]}</p>
+          </div>
         )
       }]}
     />
