@@ -47,7 +47,6 @@ export interface AppProfile {
   partnerInviteConfirmedAt?: string;
   partnerUid?: string;
   hidePrivateMarkers?: boolean;
-  disableAnimatedBackground?: boolean;
   createdAt: string;
   updatedAt: string;
 }

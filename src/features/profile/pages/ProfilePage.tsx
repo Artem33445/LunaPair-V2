@@ -57,7 +57,6 @@ export function ProfilePage() {
     disconnectPartner,
     setSupportPreferences,
     setHidePrivateMarkers,
-    setDisableAnimatedBackground,
     exportJson,
     importJson,
     clearAll
@@ -130,20 +129,6 @@ export function ProfilePage() {
             <Button variant={profile.theme === "system" ? "primary" : "outline"} onClick={() => void setTheme("system")}>Система</Button>
           </div>
           <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">{sync.message}</p>
-          <div className="mt-4 pt-4 border-t border-border space-y-4">
-            <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
-              <span>
-                <span className="block font-semibold">Анимированный фон на ПК</span>
-                <span className="text-sm text-muted">Световые столбы. Отключите для повышения производительности.</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={!(profile.disableAnimatedBackground ?? false)}
-                onChange={(event) => void setDisableAnimatedBackground(!event.target.checked)}
-                className="h-5 w-5 accent-primary"
-              />
-            </label>
-          </div>
         </div>
       )
     }

@@ -58,7 +58,6 @@ interface AppState {
   disconnectPartner: () => Promise<void>;
   setSupportPreferences: (preferences: PartnerSupportPreferences) => Promise<void>;
   setHidePrivateMarkers: (hidden: boolean) => Promise<void>;
-  setDisableAnimatedBackground: (disabled: boolean) => Promise<void>;
   startPeriod: (date?: string) => Promise<void>;
   endPeriod: (date?: string) => Promise<void>;
   saveDailyLog: (log: DailyLogInput) => Promise<void>;
@@ -547,14 +546,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     const updated = { ...profile, hidePrivateMarkers: hidden, updatedAt: now() };
     await getRepositories(get().authUser?.uid).profile.save(updated);
     set({ profile: updated, toast: hidden ? "Приватные маркеры скрыты" : "Приватные маркеры показаны" });
-  },
-
-  setDisableAnimatedBackground: async (disabled) => {
-    const profile = get().profile;
-    if (!profile) return;
-    const updated = { ...profile, disableAnimatedBackground: disabled, updatedAt: now() };
-    await getRepositories(get().authUser?.uid).profile.save(updated);
-    set({ profile: updated });
   },
 
   startPeriod: async (date = todayIso()) => {

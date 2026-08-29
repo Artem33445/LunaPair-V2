@@ -500,8 +500,17 @@ function PartnerCalendar({
 
 function DayDetails({ day, onClose }: { day: PartnerVisibleDay; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-text/25 backdrop-blur-sm md:items-center md:justify-center md:p-6">
-      <Card className="mobile-sheet w-full overflow-y-auto rounded-t-card md:max-w-2xl md:rounded-card">
+    <div
+      className="fixed inset-0 z-50 flex items-end bg-text/35 backdrop-blur-sm md:items-center md:justify-center md:p-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <Card
+        className="w-full max-h-[88dvh] overflow-y-auto rounded-t-[28px] md:max-w-2xl md:rounded-card shadow-2xl p-5 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto -mt-2 mb-3 h-1.5 w-12 rounded-full bg-border/80 md:hidden" />
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <p className="text-sm text-muted">{format(parseISO(day.date), "d MMMM yyyy", { locale: localeRu })}</p>

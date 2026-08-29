@@ -125,11 +125,17 @@ export function CalendarPage() {
       </div>
 
       {selectedDate ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-text/25 p-0 backdrop-blur-sm md:items-center md:justify-center md:p-6">
-          <div className="w-full md:max-w-2xl">
-            <button className="absolute right-4 top-4 hidden h-11 w-11 items-center justify-center rounded-full bg-card md:flex" aria-label="Закрыть" onClick={() => setSelectedDate(undefined)}>
-              <X className="h-5 w-5" />
-            </button>
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-text/35 p-0 backdrop-blur-sm md:items-center md:justify-center md:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedDate(undefined);
+          }}
+        >
+          <div
+            className="w-full md:max-w-2xl max-h-[92dvh] overflow-hidden rounded-t-[28px] md:rounded-3xl shadow-2xl flex flex-col bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border/80 md:hidden shrink-0" />
             <DayEditor key={selectedDate} date={selectedDate} compact onClose={() => setSelectedDate(undefined)} />
           </div>
         </div>

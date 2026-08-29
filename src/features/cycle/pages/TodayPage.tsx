@@ -22,7 +22,7 @@ const phaseLegendItems = [
 ] as const;
 
 export function TodayPage() {
-  const { profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
+  const { authUser, profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
   const navigate = useNavigate();
   const prediction = useMemo(
     () => predictCycle(cycles, new Date(), profile?.averageCycleLength, profile?.averagePeriodLength),
@@ -103,14 +103,14 @@ export function TodayPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-2">
       <header className="flex items-start justify-between gap-3 relative z-10 pt-1">
         <div>
-          <p className="text-sm text-muted">{format(new Date(), "d MMMM, EEEE", { locale: localeRu })}</p>
-          <h1 className="text-3xl font-bold">{name ? `Привет, ${name}` : "Привет!"}</h1>
-          <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-primarySoft px-3 py-1 text-xs font-semibold text-muted">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            {ru.localOnly}
+          <p className="text-xs sm:text-sm text-muted font-medium">{format(new Date(), "d MMMM, EEEE", { locale: localeRu })}</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{name ? `Привет, ${name}` : "Привет!"}</h1>
+          <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primarySoft px-2.5 py-0.5 text-xs font-medium text-muted">
+            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+            {authUser ? "Облачная синхронизация" : ru.localOnly}
           </p>
         </div>
         <Button aria-label="Переключить тему" size="icon" variant="outline" onClick={() => void setTheme(profile?.theme === "dark" ? "light" : "dark")}>
@@ -127,16 +127,16 @@ export function TodayPage() {
         />
       ) : null}
 
-      <div className="mx-auto max-w-sm px-4 sm:px-0">
+      <div className="mx-auto max-w-sm px-2 sm:px-0">
         <CycleRing prediction={prediction} />
-        <div className="text-center">
-          <p className="mt-1 text-muted font-medium">{periodStatusText}</p>
+        <div className="text-center my-3">
+          <p className="text-sm text-muted font-medium">{periodStatusText}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-5">
+        <div className="grid grid-cols-3 gap-1.5 text-xs text-muted sm:grid-cols-5">
           {phaseLegendItems.map((item) => (
             <span
               key={item.key}
-              className="flex min-h-10 items-center justify-center rounded-xl bg-primarySoft px-2 py-2 text-center text-[11px] font-medium leading-tight"
+              className="flex min-h-9 items-center justify-center rounded-xl bg-primarySoft/70 px-1.5 py-1 text-center text-[10.5px] font-medium leading-tight"
               aria-label={ru.phase[item.key]}
             >
               {item.label}
@@ -145,14 +145,14 @@ export function TodayPage() {
         </div>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-5">
-        <Button className="soft-pulse" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        <Button className="col-span-2 sm:col-span-1 soft-pulse min-h-12" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
           {periodActive ? "Закончились месячные" : "Начались месячные"}
         </Button>
-        <Button variant="outline" onClick={() => navigate("/log")}>Добавить симптомы</Button>
-        <Button variant="outline" onClick={() => navigate("/log")}>Описание дня</Button>
-        <Button variant="outline" onClick={() => navigate("/calendar")}>Открыть календарь</Button>
-        <Button variant="outline" onClick={() => navigate("/assistant")}><MessageCircle className="h-4 w-4" />Спросить Luna</Button>
+        <Button className="min-h-12" variant="outline" onClick={() => navigate("/log")}>Симптомы</Button>
+        <Button className="min-h-12" variant="outline" onClick={() => navigate("/log")}>Заметка дня</Button>
+        <Button className="min-h-12" variant="outline" onClick={() => navigate("/calendar")}>Календарь</Button>
+        <Button className="col-span-2 sm:col-span-1 min-h-12" variant="outline" onClick={() => navigate("/assistant")}><MessageCircle className="h-4 w-4" />Спросить Luna</Button>
       </section>
 
       <MagicBento items={bentoItems} glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"} />

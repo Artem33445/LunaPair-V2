@@ -96,8 +96,8 @@ export function AssistantPage() {
         </Button>
       </header>
 
-      <Card className="glass-panel flex flex-col h-[calc(100vh-14rem)] min-h-[500px]">
-        <div className="mb-4 rounded-2xl bg-primarySoft p-3 text-sm text-muted flex gap-2">
+      <Card className="glass-panel flex flex-col h-[calc(100dvh-12.5rem)] min-h-[400px]">
+        <div className="mb-4 rounded-2xl bg-primarySoft p-3 text-xs sm:text-sm text-muted flex gap-2">
            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
            Luna не заменяет врача. Приватные заметки, интимные данные и ваше имя не передаются в AI.
         </div>
