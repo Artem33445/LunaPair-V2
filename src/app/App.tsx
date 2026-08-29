@@ -17,6 +17,7 @@ import { ProfilePage } from "../features/profile/pages/ProfilePage";
 import { VisualEffects } from "../components/layout/VisualEffects";
 import { PartnerPage } from "../features/partner/pages/PartnerPage";
 import { AssistantPage } from "../features/assistant/pages/AssistantPage";
+import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 
 export function App() {
@@ -49,9 +50,15 @@ export function App() {
   if (error) {
     return (
       <main className="app-safe-area flex min-h-dvh items-center justify-center py-5">
-        <Card className="max-w-md">
-          <h1 className="text-xl font-bold">Локальные данные недоступны</h1>
-          <p className="mt-2 text-muted">{error}</p>
+        <Card className="max-w-md space-y-4">
+          <h1 className="text-xl font-bold">Данные временно недоступны</h1>
+          <p className="text-muted">{error}</p>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Button onClick={() => void hydrate()}>Попробовать снова</Button>
+            <Button variant="danger" onClick={() => void useAppStore.getState().clearAll()}>
+              Сбросить приложение
+            </Button>
+          </div>
         </Card>
       </main>
     );

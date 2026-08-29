@@ -4,6 +4,7 @@ import type {
   AppProfile,
   CycleEntry,
   DailyLog,
+  PartnerConnection,
   PartnerSharingPreferences,
   PartnerSupportPreferences,
   ThemePreference,
@@ -17,6 +18,8 @@ import { createBackup } from "../services/exportService";
 import { parseBackup } from "../services/importService";
 import { id, todayIso } from "../lib/utils";
 import { normalizePartnerSharing } from "../features/partner/domain/partnerPermissions";
+import { onSnapshot, doc } from "firebase/firestore";
+import { db, logout } from "../lib/firebase";
 
 const iso = (date: Date) => formatISO(date, { representation: "date" });
 
@@ -24,8 +27,8 @@ interface OnboardingInput {
   role: UserRole;
   name: string;
   lastPeriodStart?: string;
-  averageCycleLength: number;
-  averagePeriodLength: number;
+  averageCycleLength?: number;
+  averagePeriodLength?: number;
   theme: ThemePreference;
 }
 
@@ -34,8 +37,10 @@ type DailyLogInput = Omit<DailyLog, "id" | "source" | "createdAt" | "updatedAt">
 interface AppState {
   authUser?: User | null;
   profile?: AppProfile;
+  trackerProfile?: AppProfile;
   cycles: CycleEntry[];
   dailyLogs: DailyLog[];
+  partnerConnection?: PartnerConnection;
   loading: boolean;
   error?: string;
   toast?: string;
@@ -47,6 +52,7 @@ interface AppState {
   setRole: (role: UserRole) => Promise<void>;
   generatePartnerAccessCode: () => Promise<string | undefined>;
   confirmPartnerAccessCode: (code: string) => Promise<void>;
+  connectAsPartner: (code: string) => Promise<void>;
   updateSharing: (sharing: PartnerSharingPreferences) => Promise<void>;
   setPartnerAccessPaused: (paused: boolean) => Promise<void>;
   disconnectPartner: () => Promise<void>;
@@ -62,6 +68,7 @@ interface AppState {
   importJson: (json: string) => Promise<void>;
   clearAll: () => Promise<void>;
   dismissToast: () => void;
+  _unsubscribers: Array<() => void>;
 }
 
 function now() {
@@ -106,29 +113,149 @@ function generateSixDigitCode() {
 
 export const useAppStore = create<AppState>((set, get) => ({
   authUser: undefined,
+  profile: undefined,
+  trackerProfile: undefined,
   cycles: [],
   dailyLogs: [],
+  partnerConnection: undefined,
   loading: true,
+  _unsubscribers: [],
 
   setAuthUser: async (user) => {
+    // Clean up old subscriptions
+    get()._unsubscribers.forEach(unsub => unsub());
+    set({ _unsubscribers: [] });
+    
     set({ authUser: user });
     if (user) {
       set({ loading: true });
-      await migrateLocalToFirebaseIfNeeded(user.uid);
-      await get().hydrate();
+      try {
+        await migrateLocalToFirebaseIfNeeded(user.uid);
+        await get().hydrate();
+        
+        // Setup subscriptions
+        const myRepos = getRepositories(user.uid);
+        const myProfile = await myRepos.profile.get();
+        const conn = await myRepos.partnerConnection.getConnection();
+        set({ partnerConnection: conn });
+        let targetUid = user.uid;
+        
+        if (myProfile?.role === "partner") {
+          if (conn && conn.status === "active") {
+            targetUid = conn.id; // Trackers UID
+          }
+        }
+        
+        // Subscribe to profile separately (always our own)
+        const unsubProfile = (myRepos.profile as any).subscribe?.((profile: AppProfile) => {
+          const normalized = profile ? { ...profile, partnerSharing: normalizePartnerSharing(profile.partnerSharing) } : undefined;
+          set({ profile: normalized });
+        });
+
+        const unsubs: any[] = [];
+        if (unsubProfile) unsubs.push(unsubProfile);
+
+        const targetRepos = getRepositories(targetUid);
+
+        if (targetUid !== user.uid) {
+          const unsubTrackerProfile = (targetRepos.profile as any).subscribe?.((tProfile: AppProfile) => {
+            const normalized = tProfile ? { ...tProfile, partnerSharing: normalizePartnerSharing(tProfile.partnerSharing) } : undefined;
+            set({ trackerProfile: normalized });
+          });
+          if (unsubTrackerProfile) unsubs.push(unsubTrackerProfile);
+        }
+        
+        const unsubCycles = (targetRepos.cycles as any).subscribe?.((cycles: CycleEntry[]) => {
+          set({ cycles });
+        });
+        const unsubLogs = (targetRepos.dailyLogs as any).subscribe?.((logs: DailyLog[]) => {
+          set({ dailyLogs: logs });
+        });
+        
+        if (unsubCycles) unsubs.push(unsubCycles);
+        if (unsubLogs) unsubs.push(unsubLogs);
+
+        // Resume listening to pending invite if exists
+        if (myProfile && canWriteAsTracker(myProfile) && myProfile.partnerInviteCode && !myProfile.partnerInviteConfirmed) {
+          const unsubInvite = onSnapshot(doc(db, "invites", myProfile.partnerInviteCode), async (snap: any) => {
+            if (snap.exists() && snap.data().partnerUid) {
+              const timestamp = now();
+              const currentProfile = get().profile;
+              if (currentProfile) {
+                const finalProfile = {
+                  ...currentProfile,
+                  partnerInviteConfirmed: true,
+                  partnerInviteConfirmedAt: timestamp,
+                  partnerUid: snap.data().partnerUid,
+                  partnerSharing: {
+                    ...normalizePartnerSharing(currentProfile.partnerSharing),
+                    accessPaused: false,
+                    partnerDisconnected: false,
+                    updatedAt: timestamp
+                  },
+                  updatedAt: timestamp
+                };
+                await getRepositories(get().authUser?.uid).profile.save(finalProfile);
+                set({ profile: finalProfile, toast: "Партнёр успешно подключился!" });
+              }
+              unsubInvite();
+            }
+          });
+          unsubs.push(unsubInvite);
+        }
+
+        set({ _unsubscribers: unsubs });
+      } catch (error: any) {
+        console.error("Auth init error:", error);
+        set({ loading: false, error: "Ошибка при загрузке облачных данных: " + error.message });
+      }
     }
   },
 
   hydrate: async () => {
     set({ loading: true, error: undefined });
     try {
-      const [profile, cycles, dailyLogs] = await Promise.all([
-        getRepositories(get().authUser?.uid).profile.get(),
-        getRepositories(get().authUser?.uid).cycles.list(),
-        getRepositories(get().authUser?.uid).dailyLogs.list()
-      ]);
+      const uid = get().authUser?.uid;
+      const myRepos = getRepositories(uid);
+      const profile = await myRepos.profile.get();
+      
+      let targetUid = uid;
+      if (uid && profile?.role === "partner") {
+        const conn = await myRepos.partnerConnection.getConnection();
+        if (conn && conn.status === "active") {
+          targetUid = conn.id;
+        }
+      }
+      
+      const targetRepos = getRepositories(targetUid);
+      let cycles: CycleEntry[] = [];
+      let dailyLogs: DailyLog[] = [];
+      try {
+        [cycles, dailyLogs] = await Promise.all([
+          targetRepos.cycles.list(),
+          targetRepos.dailyLogs.list()
+        ]);
+      } catch (err) {
+        console.warn("Failed to load cycles from target repos:", err);
+        if (profile?.role === "partner") {
+          cycles = [];
+          dailyLogs = [];
+        } else {
+          throw err;
+        }
+      }
+      let trackerProfile: AppProfile | undefined = undefined;
+      if (targetUid !== uid) {
+        try {
+          const rawTrackerProfile = await targetRepos.profile.get();
+          trackerProfile = rawTrackerProfile ? { ...rawTrackerProfile, partnerSharing: normalizePartnerSharing(rawTrackerProfile.partnerSharing) } : undefined;
+        } catch (err) {
+          console.warn("Failed to load tracker profile:", err);
+        }
+      }
       const normalized = profile ? { ...profile, partnerSharing: normalizePartnerSharing(profile.partnerSharing) } : undefined;
-      set({ profile: normalized, cycles, dailyLogs, loading: false });
+      const conn = await myRepos.partnerConnection.getConnection();
+      set({ profile: normalized, trackerProfile, cycles, dailyLogs, partnerConnection: conn, loading: false });
     } catch {
       set({
         loading: false,
@@ -144,8 +271,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       id: "local-profile",
       role: input.role,
       name: input.name.trim(),
-      averageCycleLength: input.averageCycleLength,
-      averagePeriodLength: input.averagePeriodLength,
+      averageCycleLength: input.averageCycleLength ?? 28,
+      averagePeriodLength: input.averagePeriodLength ?? 5,
       theme: input.theme,
       onboardingCompleted: true,
       partnerSharing: defaultSharing,
@@ -160,15 +287,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt,
       updatedAt: createdAt
     };
+    const periodLength = input.averagePeriodLength ?? 5;
+    const cycleLength = input.averageCycleLength ?? 28;
     const cycles: CycleEntry[] =
       input.role === "tracker" && input.lastPeriodStart
         ? [
             {
               id: id("cycle"),
               startDate: input.lastPeriodStart,
-              endDate: iso(addDays(parseISO(input.lastPeriodStart), input.averagePeriodLength - 1)),
-              periodLength: input.averagePeriodLength,
-              cycleLength: input.averageCycleLength,
+              endDate: iso(addDays(parseISO(input.lastPeriodStart), periodLength - 1)),
+              periodLength,
+              cycleLength,
               source: "user",
               createdAt,
               updatedAt: createdAt
@@ -213,29 +342,70 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   generatePartnerAccessCode: async () => {
-    const profile = get().profile;
-    if (!profile) return undefined;
-    if (!canWriteAsTracker(profile)) {
-      set({ toast: "Вернись в режим девушки, чтобы создать ключ" });
+    try {
+      const profile = get().profile;
+      if (!profile) return undefined;
+      if (!canWriteAsTracker(profile)) {
+        set({ toast: "Вернись в режим девушки, чтобы создать ключ" });
+        return undefined;
+      }
+      
+      // Delegate code generation to the repository which handles Firestore logic
+      const invite = await getRepositories(get().authUser?.uid).partnerConnection.createInvite();
+      const code = invite.code;
+      
+      const updated: Partial<AppProfile> = {
+        ...profile,
+        partnerInviteCode: code,
+        partnerInviteConfirmed: false,
+        partnerSharing: {
+          ...normalizePartnerSharing(profile.partnerSharing),
+          partnerDisconnected: false,
+          updatedAt: now()
+        },
+        updatedAt: now()
+      };
+      
+      // Remove fields that shouldn't be defined yet
+      delete updated.partnerInviteConfirmedAt;
+      delete updated.partnerUid;
+
+      await getRepositories(get().authUser?.uid).profile.save(updated as AppProfile);
+      
+      // Listen for partner connection
+      const unsub = onSnapshot(doc(db, "invites", code), async (snap: any) => {
+        if (snap.exists() && snap.data().partnerUid) {
+          // Partner has connected!
+          const timestamp = now();
+          const currentProfile = get().profile;
+          if (currentProfile) {
+            const finalProfile = {
+              ...currentProfile,
+              partnerInviteConfirmed: true,
+              partnerInviteConfirmedAt: timestamp,
+              partnerUid: snap.data().partnerUid,
+              partnerSharing: {
+                ...normalizePartnerSharing(currentProfile.partnerSharing),
+                accessPaused: false,
+                partnerDisconnected: false,
+                updatedAt: timestamp
+              },
+              updatedAt: timestamp
+            };
+            await getRepositories(get().authUser?.uid).profile.save(finalProfile);
+            set({ profile: finalProfile, toast: "Партнёр успешно подключился!" });
+          }
+          unsub(); // Stop listening
+        }
+      });
+      
+      set({ profile: updated as AppProfile, toast: "Ключ создан. Ожидание партнёра..." });
+      return code;
+    } catch (e: any) {
+      console.error(e);
+      set({ toast: "Ошибка при создании ключа: " + e.message });
       return undefined;
     }
-    const code = generateSixDigitCode();
-    const updated = {
-      ...profile,
-      partnerInviteCode: code,
-      partnerInviteConfirmed: false,
-      partnerInviteConfirmedAt: undefined,
-      partnerSharing: {
-        ...normalizePartnerSharing(profile.partnerSharing),
-        partnerDisconnected: false,
-        updatedAt: now()
-      },
-      updatedAt: now()
-    };
-    await getRepositories(get().authUser?.uid).profile.save(updated);
-    await getRepositories(get().authUser?.uid).partnerConnection.createInvite();
-    set({ profile: updated, toast: "Ключ подтверждения создан" });
-    return code;
   },
 
   confirmPartnerAccessCode: async (code) => {
@@ -264,8 +434,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       updatedAt: timestamp
     };
     await getRepositories(get().authUser?.uid).profile.save(updated);
-    await getRepositories(get().authUser?.uid).partnerConnection.connectWithCode(normalized);
     set({ profile: updated, toast: "Ключ подтверждён. Партнёрский preview открыт" });
+  },
+
+  connectAsPartner: async (code) => {
+    try {
+      const normalized = code.trim().toUpperCase();
+      const conn = await getRepositories(get().authUser?.uid).partnerConnection.connectWithCode(normalized);
+      set({ partnerConnection: conn });
+      // Re-hydrate to pull the tracker's data using the new connection
+      await get().hydrate();
+      if (get().authUser) {
+        await get().setAuthUser(get().authUser ?? null);
+      }
+      set({ toast: "Успешно подключено к трекеру!" });
+    } catch (e: any) {
+      set({ toast: e.message || "Не удалось подключиться. Проверьте код." });
+    }
   },
 
   updateSharing: async (sharing) => {
@@ -308,14 +493,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   disconnectPartner: async () => {
     const profile = get().profile;
     if (!profile) return;
-    if (!canWriteAsTracker(profile)) {
-      set({ toast: "Партнёр не может отключать доступ" });
+    const uid = get().authUser?.uid;
+    if (profile.role === "partner") {
+      await getRepositories(uid).partnerConnection.disconnect();
+      set({
+        partnerConnection: undefined,
+        cycles: [],
+        dailyLogs: [],
+        toast: "Подключение отключено"
+      });
       return;
     }
     const timestamp = now();
     const sharing = normalizePartnerSharing(profile.partnerSharing);
     const updated = {
       ...profile,
+      partnerInviteConfirmed: false,
+      partnerInviteCode: undefined,
+      partnerInviteConfirmedAt: undefined,
+      partnerUid: undefined,
       partnerSharing: {
         ...sharing,
         accessPaused: false,
@@ -324,9 +520,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       },
       updatedAt: timestamp
     };
-    await getRepositories(get().authUser?.uid).profile.save(updated);
-    await getRepositories(get().authUser?.uid).partnerConnection.disconnect();
-    set({ profile: updated, toast: "Партнёрский доступ отключён" });
+    await getRepositories(uid).profile.save(updated as any);
+    await getRepositories(uid).partnerConnection.disconnect();
+    set({ profile: updated as any, toast: "Партнёрский доступ отключён" });
   },
 
   setSupportPreferences: async (preferences) => {
@@ -366,39 +562,44 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
-    const createdAt = now();
-    if (get().cycles.some((cycle) => cycle.startDate === date)) {
-      set({ toast: "Цикл на эту дату уже отмечен" });
-      return;
-    }
-    const previous = [...get().cycles].filter((cycle) => cycle.startDate < date).sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
-    if (previous) {
-      const gap = differenceInCalendarDays(parseISO(date), parseISO(previous.startDate));
-      if (gap > 0 && gap <= 14) {
-        const confirmed =
-          typeof window === "undefined" ||
-          window.confirm(
-            "Промежуток между началами месячных получился заметно короче предыдущих. Проверь дату. Если всё указано правильно, запись будет сохранена."
-          );
-        if (!confirmed) {
-          set({ toast: "Создание нового цикла отменено" });
-          return;
+    try {
+      const createdAt = now();
+      if (get().cycles.some((cycle) => cycle.startDate === date)) {
+        set({ toast: "Цикл на эту дату уже отмечен" });
+        return;
+      }
+      const previous = [...get().cycles].filter((cycle) => cycle.startDate < date).sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
+      if (previous) {
+        const gap = differenceInCalendarDays(parseISO(date), parseISO(previous.startDate));
+        if (gap > 0 && gap <= 14) {
+          const confirmed =
+            typeof window === "undefined" ||
+            window.confirm(
+              "Промежуток между началами месячных получился заметно короче предыдущих. Проверь дату. Если всё указано правильно, запись будет сохранена."
+            );
+          if (!confirmed) {
+            set({ toast: "Создание нового цикла отменено" });
+            return;
+          }
         }
       }
+      const cycles = deriveCycleLengths([
+        ...get().cycles,
+        {
+          id: id("cycle"),
+          startDate: date,
+          source: "user",
+          createdAt,
+          updatedAt: createdAt
+        }
+      ]);
+      await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
+      await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
+      set({ cycles, toast: "Начало месячных сохранено" });
+    } catch (e: any) {
+      console.error("Error starting period:", e);
+      set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
     }
-    const cycles = deriveCycleLengths([
-      ...get().cycles,
-      {
-        id: id("cycle"),
-        startDate: date,
-        source: "user",
-        createdAt,
-        updatedAt: createdAt
-      }
-    ]);
-    await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
-    await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
-    set({ cycles, toast: "Начало месячных сохранено" });
   },
 
   endPeriod: async (date = todayIso()) => {
@@ -406,25 +607,30 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
-    const cycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
-    const latest = cycles.at(-1);
-    if (!latest) {
-      set({ toast: "Сначала отметь начало месячных" });
-      return;
+    try {
+      const cycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      const latest = cycles.at(-1);
+      if (!latest) {
+        set({ toast: "Сначала отметь начало месячных" });
+        return;
+      }
+      if (date < latest.startDate) {
+        set({ toast: "Дата окончания не может быть раньше начала" });
+        return;
+      }
+      const updated = {
+        ...latest,
+        endDate: date,
+        periodLength: differenceInCalendarDays(parseISO(date), parseISO(latest.startDate)) + 1,
+        updatedAt: now()
+      };
+      const next = cycles.map((cycle) => (cycle.id === latest.id ? updated : cycle));
+      await getRepositories(get().authUser?.uid).cycles.upsert(updated);
+      set({ cycles: next, toast: "Окончание месячных сохранено" });
+    } catch (e: any) {
+      console.error("Error ending period:", e);
+      set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
     }
-    if (date < latest.startDate) {
-      set({ toast: "Дата окончания не может быть раньше начала" });
-      return;
-    }
-    const updated = {
-      ...latest,
-      endDate: date,
-      periodLength: differenceInCalendarDays(parseISO(date), parseISO(latest.startDate)) + 1,
-      updatedAt: now()
-    };
-    const next = cycles.map((cycle) => (cycle.id === latest.id ? updated : cycle));
-    await getRepositories(get().authUser?.uid).cycles.upsert(updated);
-    set({ cycles: next, toast: "Окончание месячных сохранено" });
   },
 
   saveDailyLog: async (input) => {
@@ -432,26 +638,31 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может создавать или изменять записи" });
       return;
     }
-    const existing = await getRepositories(get().authUser?.uid).dailyLogs.getByDate(input.date);
-    const timestamp = now();
-    const log: DailyLog = {
-      ...input,
-      id: existing?.id ?? id("log"),
-      symptoms: input.symptoms ?? [],
-      intimacy: input.intimacy ?? { occurred: null },
-      painLevel: input.painLevel ?? input.pain,
-      hiddenFromPartner: input.hiddenFromPartner ?? existing?.hiddenFromPartner ?? false,
-      noteVisibleToPartner: input.noteVisibleToPartner ?? existing?.noteVisibleToPartner ?? false,
-      source: existing?.source ?? "user",
-      createdAt: existing?.createdAt ?? timestamp,
-      updatedAt: timestamp
-    };
-    await getRepositories(get().authUser?.uid).dailyLogs.upsert(log);
-    const others = get().dailyLogs.filter((item) => item.id !== log.id);
-    set({
-      dailyLogs: [...others, log].sort((a, b) => a.date.localeCompare(b.date)),
-      toast: "Запись за день сохранена"
-    });
+    try {
+      const existing = await getRepositories(get().authUser?.uid).dailyLogs.getByDate(input.date);
+      const timestamp = now();
+      const log: DailyLog = {
+        ...input,
+        id: existing?.id ?? id("log"),
+        symptoms: input.symptoms ?? [],
+        intimacy: input.intimacy ?? { occurred: null },
+        painLevel: input.painLevel ?? input.pain,
+        hiddenFromPartner: input.hiddenFromPartner ?? existing?.hiddenFromPartner ?? false,
+        noteVisibleToPartner: input.noteVisibleToPartner ?? existing?.noteVisibleToPartner ?? false,
+        source: existing?.source ?? "user",
+        createdAt: existing?.createdAt ?? timestamp,
+        updatedAt: timestamp
+      };
+      await getRepositories(get().authUser?.uid).dailyLogs.upsert(log);
+      const others = get().dailyLogs.filter((item) => item.id !== log.id);
+      set({
+        dailyLogs: [...others, log].sort((a, b) => a.date.localeCompare(b.date)),
+        toast: "Запись за день сохранена"
+      });
+    } catch (e: any) {
+      console.error("Error saving daily log:", e);
+      set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
+    }
   },
 
   deleteDailyLog: async (idValue) => {
@@ -459,8 +670,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может удалять записи" });
       return;
     }
-    await getRepositories(get().authUser?.uid).dailyLogs.delete(idValue);
-    set({ dailyLogs: get().dailyLogs.filter((log) => log.id !== idValue), toast: "Запись очищена" });
+    try {
+      await getRepositories(get().authUser?.uid).dailyLogs.delete(idValue);
+      set({ dailyLogs: get().dailyLogs.filter((log) => log.id !== idValue), toast: "Запись очищена" });
+    } catch (e: any) {
+      console.error("Error deleting daily log:", e);
+      set({ toast: "Ошибка при удалении: " + (e?.message || "не удалось удалить") });
+    }
   },
 
   deleteDailyLogByDate: async (date) => {
@@ -468,8 +684,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может удалять записи" });
       return;
     }
-    await getRepositories(get().authUser?.uid).dailyLogs.deleteByDate(date);
-    set({ dailyLogs: get().dailyLogs.filter((log) => log.date !== date), toast: "Запись за день очищена" });
+    try {
+      await getRepositories(get().authUser?.uid).dailyLogs.deleteByDate(date);
+      set({ dailyLogs: get().dailyLogs.filter((log) => log.date !== date), toast: "Запись за день очищена" });
+    } catch (e: any) {
+      console.error("Error deleting daily log by date:", e);
+      set({ toast: "Ошибка при удалении: " + (e?.message || "не удалось удалить") });
+    }
   },
 
   exportJson: () => {
@@ -496,26 +717,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   clearAll: async () => {
-    if (!canWriteAsTracker(get().profile)) {
-      set({ toast: "Партнёр не может удалять данные" });
-      return;
+    const uid = get().authUser?.uid;
+    if (uid) {
+      const repos = getRepositories(uid);
+      await Promise.all([
+        repos.profile.clear().catch(() => {}),
+        repos.cycles.clear().catch(() => {}),
+        repos.dailyLogs.clear().catch(() => {}),
+        repos.advice.clear().catch(() => {}),
+        repos.partnerConnection.clear().catch(() => {})
+      ]);
     }
-    await Promise.all([
-      getRepositories(get().authUser?.uid).profile.clear(),
-      getRepositories(useAppStore.getState().authUser?.uid).cycles.clear(),
-      getRepositories(useAppStore.getState().authUser?.uid).dailyLogs.clear(),
-      getRepositories(get().authUser?.uid).advice.clear(),
-      getRepositories(get().authUser?.uid).partnerConnection.clear()
-    ]);
+    await logout().catch(() => {});
     clearLunaPairBrowserState();
     set({
       profile: undefined,
+      trackerProfile: undefined,
       cycles: [],
       dailyLogs: [],
+      partnerConnection: undefined,
       error: undefined,
       loading: false,
       toast: "Приложение сброшено. Можно начать заново"
     });
+    window.location.href = "/";
   },
 
   dismissToast: () => set({ toast: undefined })

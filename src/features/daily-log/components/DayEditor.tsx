@@ -299,7 +299,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
                 type="checkbox"
                 className="mt-1 h-5 w-5 accent-primary"
                 checked={noteVisibleToPartner}
-                disabled={!note.trim() || hiddenFromPartner}
+                disabled={hiddenFromPartner}
                 onChange={(event) => {
                   setNoteVisibleToPartner(event.target.checked);
                   markDirty();

@@ -8,6 +8,7 @@ import { downloadBackup } from "../../../services/exportService";
 import { noopSyncService } from "../../../services/syncService";
 import { useAppStore } from "../../../stores/appStore";
 import { logout } from "../../../lib/firebase";
+import { motion } from "framer-motion";
 import type { PartnerAccessLevel, PartnerSharingPreferences, PartnerSupportPreferences, UserRole } from "../../../types";
 import {
   applyPartnerAccessLevel,
@@ -15,6 +16,7 @@ import {
   permissionMeta,
   type PartnerPermissionKey
 } from "../../partner/domain/partnerPermissions";
+import { loginWithGoogle } from "../../../lib/firebase";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 
 const sectionTitles = {
@@ -164,13 +166,23 @@ export function ProfilePage() {
               Импорт JSON
               <Input className="sr-only" type="file" accept="application/json" onChange={(event) => void onImport(event.target.files?.[0])} />
             </label>
-            {authUser && (
+            {authUser ? (
               <Button variant="outline" onClick={async () => {
                 if (confirm("Выйти из аккаунта Google?")) {
                   await logout();
                   window.location.reload();
                 }
               }}><LogOut className="h-4 w-4" />Выйти из Google</Button>
+            ) : (
+              <Button variant="outline" onClick={async () => {
+                try {
+                  await loginWithGoogle();
+                  // appStore will handle auth state change and hydrate from Firebase if needed
+                  window.location.reload();
+                } catch (error) {
+                  alert("Не удалось войти через Google");
+                }
+              }}>Войти через Google (Синхронизация)</Button>
             )}
             <Button variant="danger" onClick={() => {
               if (confirm("Полностью сбросить LunaPair? Будут удалены профиль, циклы, дневник, настройки, демо-режим, история ассистента и экран приветствия. После этого приложение начнётся заново.")) void clearAll();
@@ -185,10 +197,22 @@ export function ProfilePage() {
       id: "partner-mode",
       className: "h-full",
       content: (
-        <div className="space-y-3">
-          <h2 className="text-xl font-bold">Только просмотр</h2>
-          <p className="text-sm text-muted">В партнёрском режиме скрыты экспорт, импорт, сброс приложения и любые действия записи.</p>
-          <Button onClick={returnToTracker}><LogOut className="h-4 w-4" />Вернуться в профиль девушки</Button>
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold">Аккаунт партнёра</h2>
+          <p className="text-sm text-muted">В партнёрском режиме недоступно изменение данных девушки.</p>
+          <div className="flex flex-wrap gap-3">
+            {authUser ? (
+              <Button variant="outline" onClick={async () => {
+                if (confirm("Выйти из аккаунта Google?")) {
+                  await logout();
+                  window.location.href = "/";
+                }
+              }}><LogOut className="h-4 w-4 mr-2" />Выйти из Google</Button>
+            ) : null}
+            <Button variant="danger" onClick={() => {
+              if (confirm("Полностью сбросить приложение и выйти?")) void clearAll();
+            }}><RotateCcw className="h-4 w-4 mr-2" />Сбросить приложение</Button>
+          </div>
         </div>
       )
     });
@@ -344,31 +368,24 @@ function PartnerAccessSettings({
 
       <section className="grid gap-3 rounded-card border border-border bg-card/80 p-4 md:grid-cols-[1fr_auto]">
         <div>
-          <h3 className="flex items-center gap-2 text-lg font-bold"><KeyRound className="h-5 w-5 text-primary" />Ключ подтверждения</h3>
+          <h3 className="flex items-center gap-2 text-lg font-bold"><KeyRound className="h-5 w-5 text-primary" />Ключ подключения</h3>
           <p className="mt-1 text-sm text-muted">
-            В локальном режиме ключ подтверждает, что партнёрский preview открыт осознанно. Настоящая синхронизация между устройствами пока не подключена.
+            Сгенерируй код и отправь его партнёру. Как только партнёр введёт код в своём приложении, этот экран автоматически обновится.
           </p>
           {inviteCode ? (
-            <div className="mt-3 inline-flex rounded-2xl border border-border bg-primarySoft px-4 py-3 text-2xl font-bold tracking-[0.28em] text-primary">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                void navigator.clipboard.writeText(inviteCode);
+                useAppStore.setState({ toast: "Код скопирован" });
+              }}
+              className="mt-3 inline-flex rounded-2xl border border-border bg-primarySoft px-4 py-3 text-2xl font-bold tracking-[0.28em] text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+            >
               {inviteCode}
-            </div>
+            </motion.button>
           ) : (
             <p className="mt-3 rounded-2xl bg-primarySoft p-3 text-sm text-muted">Ключ ещё не создан.</p>
           )}
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <Input
-              inputMode="numeric"
-              maxLength={6}
-              value={confirmCode}
-              onChange={(event) => setConfirmCode(event.target.value.replace(/\D/g, ""))}
-              placeholder="Введите ключ"
-              aria-label="Ключ подтверждения партнёра"
-            />
-            <Button onClick={onConfirmCode} disabled={!inviteCode || confirmCode.length !== 6}>
-              <CheckCircle2 className="h-4 w-4" />
-              Подтвердить
-            </Button>
-          </div>
         </div>
         <div className="flex flex-col gap-2 md:min-w-56">
           <Button variant="outline" onClick={onGenerateCode}><KeyRound className="h-4 w-4" />Сгенерировать ключ</Button>

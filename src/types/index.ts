@@ -3,7 +3,7 @@ export type ThemePreference = "light" | "dark" | "system";
 export type CyclePhase = "menstrual" | "follicular" | "fertile" | "ovulation" | "luteal";
 export type DataConfidence = "low" | "medium" | "high";
 export type PartnerAccessLevel = "basic" | "wellbeing" | "detailed" | "full" | "custom";
-export type PartnerConnectionStatus = "local-preview" | "paused" | "disconnected";
+export type PartnerConnectionStatus = "local-preview" | "paused" | "disconnected" | "active";
 export type Mood =
   | "good"
   | "calm"
@@ -45,6 +45,7 @@ export interface AppProfile {
   partnerInviteCode?: string;
   partnerInviteConfirmed?: boolean;
   partnerInviteConfirmedAt?: string;
+  partnerUid?: string;
   hidePrivateMarkers?: boolean;
   disableAnimatedBackground?: boolean;
   createdAt: string;

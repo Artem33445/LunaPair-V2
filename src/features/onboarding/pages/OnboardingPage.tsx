@@ -212,31 +212,28 @@ export function OnboardingPage() {
   }
 
   if (stage === "partner") {
-    const titles = ["Режим партнёра", "Как к тебе обращаться?", "Будущее подключение"];
+    const titles = ["Режим партнёра", "Как к тебе обращаться?"];
     return (
-      <Shell title={titles[step]} subtitle={`${step + 1} из 3`}>
+      <Shell title={titles[step]} subtitle={`${step + 1} из 2`}>
         {step === 0 ? (
-          <p className="text-muted">В будущем здесь можно будет подключиться к партнёрше по защищённому коду. В этой версии доступен демонстрационный режим.</p>
+          <p className="text-muted">После короткой настройки профиля мы попросим тебя ввести 6-значный код доступа, который генерируется в приложении твоей партнёрши.</p>
         ) : null}
         {step === 1 ? <NameField name={name} setName={(value) => { setName(value); clearValidation(); }} /> : null}
-        {step === 2 ? (
-          <div className="space-y-4">
-            <div>
-              <FieldLabel htmlFor="code">Шестизначный код</FieldLabel>
-              <Input id="code" value={code} maxLength={6} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} placeholder="000000" />
-            </div>
-            <Button variant="outline" className="w-full" onClick={() => setMessage("Синхронизация появится в следующей версии. Сейчас открыт демонстрационный профиль")}>
-              Подключиться
-            </Button>
-            {message ? <p className="rounded-2xl bg-primarySoft p-3 text-sm text-muted">{message}</p> : null}
-          </div>
-        ) : null}
         <div className="mt-6 flex gap-3">
           {step > 0 ? <Button variant="outline" onClick={() => { clearValidation(); setStep(step - 1); }}>Назад</Button> : null}
-          {step < 2 ? (
+          {step < 1 ? (
             <Button className="flex-1" onClick={goPartnerNext}>Дальше</Button>
           ) : (
-            <Button className="flex-1" onClick={openPartnerDemo}>Открыть демо-режим</Button>
+            <Button className="flex-1" onClick={() => {
+              const error = partnerStepError(1);
+              if (error) {
+                setValidationMessage(error);
+                return;
+              }
+              void complete({ role: "partner", name: trimmedName, theme: "system" });
+            }}>
+              Начать
+            </Button>
           )}
         </div>
         {validationMessage ? <ValidationMessage>{validationMessage}</ValidationMessage> : null}

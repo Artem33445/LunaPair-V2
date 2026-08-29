@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Вспомогательные функции
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Проверка, является ли текущий пользователь партнером этого трекера
+    function isPartner(trackerId) {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(trackerId)/data/profile) &&
+         get(/databases/$(database)/documents/users/$(trackerId)/data/profile).data.partnerUid == request.auth.uid) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)/data/settings) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)/data/settings).data.partnerConnection.id == trackerId &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)/data/settings).data.partnerConnection.status == 'active')
+      );
+    }
+
+    // Правила для коллекции пользователей и вложенных данных
+    match /users/{userId} {
+      // Пользователь имеет полный доступ к своему профилю
+      allow read, write: if isOwner(userId);
+      // Партнер имеет доступ на чтение профиля трекера
+      allow read: if isPartner(userId);
+      
+      // Подколлекция data (profile, settings)
+      match /data/{docId} {
+        allow read, write: if isOwner(userId);
+        allow read: if isPartner(userId);
+      }
+      
+      // Подколлекция циклов
+      match /cycles/{cycleId} {
+        allow read, write: if isOwner(userId);
+        allow read: if isPartner(userId);
+      }
+      
+      // Подколлекция ежедневных записей
+      match /dailyLogs/{date} {
+        allow read, write: if isOwner(userId);
+        allow read: if isPartner(userId);
+        // Замечание: в будущем можно добавить более строгие фильтры для приватных записей, 
+        // например, проверяя поле visibility перед отдачей документа.
+      }
+    }
+    
+    // Коллекция для инвайт-кодов (чтобы партнер мог найти трекера)
+    match /invites/{inviteCode} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated(); // Партнер записывает сюда свой UID
+      allow delete: if isOwner(resource.data.trackerUid);
+    }
+  }
+}

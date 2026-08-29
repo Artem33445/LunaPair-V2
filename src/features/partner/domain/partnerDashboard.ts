@@ -36,9 +36,11 @@ export function buildPartnerDashboardData({
     ? "disconnected"
     : permissions.accessPaused
       ? "paused"
-      : "local-preview";
+      : profile?.partnerInviteConfirmed 
+        ? "active" 
+        : "local-preview";
   const prediction = predictCycle(cycles, atDate, profile?.averageCycleLength, profile?.averagePeriodLength);
-  const blocked = status !== "local-preview";
+  const blocked = status !== "local-preview" && status !== "active";
   const fullAccess = permissions.accessLevel === "full";
   const todayDate = formatDate(atDate);
   const calendarDays = blocked || !permissions.shareCalendar

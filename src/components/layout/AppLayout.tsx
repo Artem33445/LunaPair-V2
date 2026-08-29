@@ -28,6 +28,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const role = useAppStore((state) => state.profile?.role);
   const theme = useAppStore((state) => state.profile?.theme);
   const disableAnimatedBg = useAppStore((state) => state.profile?.disableAnimatedBackground);
+  const authUser = useAppStore((state) => state.authUser);
   const navigate = useNavigate();
   const items = role === "partner" ? partnerNav : trackerNav;
 
@@ -43,7 +44,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <img src="/icons/lunapair.svg" alt="" className="h-11 w-11 rounded-2xl" />
           <div>
             <div className="font-bold">LunaPair</div>
-            <div className="text-xs text-muted">Локальный режим</div>
+            <div className="text-xs text-muted flex items-center gap-1.5">
+              {authUser ? (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Облачная синхронизация
+                </>
+              ) : (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted" />
+                  Локальный режим
+                </>
+              )}
+            </div>
           </div>
         </div>
         <nav className="space-y-2">

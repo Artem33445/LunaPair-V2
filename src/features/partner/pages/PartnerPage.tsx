@@ -9,6 +9,7 @@ import { Card } from "../../../components/ui/card";
 import { ru } from "../../../i18n/ru";
 import { cn } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
+import { logout } from "../../../lib/firebase";
 import type { CyclePhase, EnergyLevel, PartnerDashboardData, PartnerVisibleDay } from "../../../types";
 import { buildPartnerDashboardData } from "../domain/partnerDashboard";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
@@ -39,7 +40,7 @@ const energyText: Record<EnergyLevel, string> = {
 };
 
 export function PartnerPage() {
-  const { profile, cycles, dailyLogs, enablePartnerDemo, setRole } = useAppStore();
+  const { profile, trackerProfile, cycles, dailyLogs, partnerConnection, enablePartnerDemo, disconnectPartner } = useAppStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [month, setMonth] = useState(startOfMonth(new Date()));
@@ -58,47 +59,63 @@ export function PartnerPage() {
       endDate: format(addDays(start, 41), "yyyy-MM-dd")
     };
   }, [month]);
+  const activeProfile = profile?.role === "partner" ? (trackerProfile ?? profile) : profile;
   const dashboard = useMemo(
-    () => buildPartnerDashboardData({ profile, cycles, dailyLogs, startDate: range.startDate, endDate: range.endDate }),
-    [cycles, dailyLogs, profile, range.endDate, range.startDate]
+    () => buildPartnerDashboardData({ profile: activeProfile, cycles, dailyLogs, startDate: range.startDate, endDate: range.endDate }),
+    [activeProfile, cycles, dailyLogs, range.endDate, range.startDate]
   );
   const selectedDay = selectedDate ? dashboard.calendarDays.find((day) => day.date === selectedDate) : undefined;
-  const confirmed = Boolean(profile?.partnerInviteConfirmed);
+  const isTracker = profile?.role === "tracker";
+  const isConnectedPartner = profile?.role === "partner" && partnerConnection?.status === "active";
+  const isDemoPartner = profile?.role === "partner" && (partnerConnection?.status === "local-preview" || (Boolean(partnerConnection) && cycles.length > 0));
 
-  if (profile?.role === "partner" && cycles.length === 0) {
-    return (
-      <Card className="space-y-4">
-        <HeartHandshake className="h-10 w-10 text-primary" />
-        <h1 className="text-2xl font-bold">Локальный предпросмотр режима партнёра</h1>
-        <p className="text-muted">
-          Синхронизация между устройствами пока не подключена. Можно открыть демо-профиль, чтобы посмотреть read-only интерфейс.
-        </p>
-        <Button onClick={() => void enablePartnerDemo(profile.name)}>Открыть демо-режим</Button>
-      </Card>
-    );
-  }
+  const confirmed = isTracker || isConnectedPartner || isDemoPartner;
+  const [partnerCode, setPartnerCode] = useState("");
 
   if (!confirmed) {
+    const isTruePartner = profile?.role === "partner";
     return (
       <Card className="space-y-4">
         <LockKeyhole className="h-10 w-10 text-primary" />
-        <h1 className="text-2xl font-bold">Нужно подтверждение партнёрши</h1>
+        <h1 className="text-2xl font-bold">Ожидание подключения</h1>
         <p className="text-muted">
-          Чтобы открыть партнёрский read-only режим, в профиле девушки нужно сгенерировать ключ и подтвердить его. Это локальный preview, без настоящей синхронизации между устройствами.
+          Попроси девушку сгенерировать 6-значный код доступа в её приложении LunaPair и введи его ниже.
         </p>
-        {profile?.partnerInviteCode ? (
-          <p className="rounded-2xl bg-primarySoft p-4 text-sm text-muted">
-            Текущий ключ создан: <span className="font-bold tracking-[0.2em] text-primary">{profile.partnerInviteCode}</span>. Подтверди его в профиле девушки.
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate("/profile")}>Открыть профиль</Button>
-          {profile?.role === "partner" ? (
-            <Button variant="outline" onClick={() => void setRole("tracker").then(() => navigate("/profile"))}>
-              <LogOut className="h-4 w-4" />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            className="flex-1 rounded-2xl border border-border bg-card px-4 py-3 text-lg font-semibold tracking-widest outline-none focus:border-primary"
+            placeholder="ВВЕДИ КОД"
+            maxLength={6}
+            value={partnerCode}
+            onChange={(e) => setPartnerCode(e.target.value.replace(/\D/g, ""))}
+          />
+          <Button onClick={() => void useAppStore.getState().connectAsPartner(partnerCode)} disabled={partnerCode.length < 6}>
+            Подключиться
+          </Button>
+        </div>
+
+        {isTruePartner && (
+          <div className="pt-4 mt-2">
+            <p className="text-sm text-muted mb-3">Хочешь посмотреть, как выглядит приложение до подключения?</p>
+            <Button variant="secondary" onClick={() => void enablePartnerDemo(profile.name)}>Открыть демо-режим</Button>
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-border mt-4">
+          {isTruePartner ? (
+            <Button variant="outline" onClick={async () => {
+              await logout();
+              window.location.href = "/";
+            }}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Выйти из аккаунта
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => navigate("/profile")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Вернуться в режим девушки
             </Button>
-          ) : null}
+          )}
         </div>
       </Card>
     );
@@ -132,8 +149,12 @@ export function PartnerPage() {
     <div className="space-y-5">
       <PartnerHeader
         dashboard={dashboard}
-        onPermissions={() => navigate("/profile")}
-        onExit={profile?.role === "partner" ? () => void setRole("tracker").then(() => navigate("/profile")) : undefined}
+        onPermissions={profile?.role === "tracker" ? () => navigate("/profile") : undefined}
+        onExit={profile?.role === "tracker" ? () => navigate("/profile") : undefined}
+        onExitDemo={isDemoPartner ? async () => {
+          await disconnectPartner();
+          window.location.href = "/";
+        } : undefined}
       />
 
       {view === "today" ? (
@@ -167,7 +188,7 @@ export function PartnerPage() {
   );
 }
 
-function PartnerHeader({ dashboard, onPermissions, onExit }: { dashboard: PartnerDashboardData; onPermissions: () => void; onExit?: () => void }) {
+function PartnerHeader({ dashboard, onPermissions, onExit, onExitDemo }: { dashboard: PartnerDashboardData; onPermissions?: () => void; onExit?: () => void; onExitDemo?: () => void }) {
   return (
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div>
@@ -185,10 +206,18 @@ function PartnerHeader({ dashboard, onPermissions, onExit }: { dashboard: Partne
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={onPermissions}>
-          <LockKeyhole className="h-4 w-4" />
-          Разрешения
-        </Button>
+        {onPermissions && (
+          <Button variant="outline" onClick={onPermissions}>
+            <LockKeyhole className="h-4 w-4" />
+            Разрешения
+          </Button>
+        )}
+        {onExitDemo ? (
+          <Button variant="outline" onClick={onExitDemo}>
+            <LogOut className="h-4 w-4" />
+            Выйти из демо
+          </Button>
+        ) : null}
         {onExit ? (
           <Button variant="outline" onClick={onExit}>
             <LogOut className="h-4 w-4" />

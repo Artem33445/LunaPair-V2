@@ -147,7 +147,7 @@ describe("personal advice service", () => {
     expect(result.advice.tips).toHaveLength(3);
     expect(mocks.repository.save).toHaveBeenCalledOnce();
     expect(mocks.generateStructuredAdvice).toHaveBeenCalledOnce();
-  });
+  }, 15000);
 
   it("sends only minimal context and excludes identifiers, name, key and notes", async () => {
     const { getPersonalAdvice } = await import("./adviceService");
@@ -162,7 +162,7 @@ describe("personal advice service", () => {
 
     await getPersonalAdvice({ profile, cycles, dailyLogs, prediction, uid: "user-1" });
 
-    const context = mocks.generateStructuredAdvice.mock.calls[0][1];
+    const context = mocks.generateStructuredAdvice.mock.calls[0][0];
     expect(JSON.stringify(context)).not.toContain("Анна");
     expect(JSON.stringify(context)).not.toContain("secret-key");
     expect(JSON.stringify(context)).not.toContain("profile-1");

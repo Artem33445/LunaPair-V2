@@ -8,7 +8,8 @@ import {
   query,
   orderBy,
   where,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from "firebase/firestore";
 import type {
   AdviceRepository,
@@ -25,6 +26,10 @@ import type {
 } from "../../types";
 import { db } from "../../lib/firebase";
 
+function cleanData<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
+
 export class FirebaseProfileRepository implements ProfileRepository {
   constructor(private uid: string) {}
 
@@ -38,11 +43,19 @@ export class FirebaseProfileRepository implements ProfileRepository {
   }
 
   async save(profile: AppProfile) {
-    await setDoc(this.docRef, profile, { merge: true });
+    await setDoc(this.docRef, cleanData(profile), { merge: true });
   }
 
   async clear() {
     await deleteDoc(this.docRef);
+  }
+
+  subscribe(callback: (profile: AppProfile | undefined) => void): () => void {
+    return onSnapshot(this.docRef, (snap: any) => {
+      callback(snap.exists() ? (snap.data() as AppProfile) : undefined);
+    }, (error) => {
+      console.warn("Profile subscription error:", error);
+    });
   }
 }
 
@@ -59,8 +72,17 @@ export class FirebaseCycleRepository implements CycleRepository {
     return snap.docs.map((d) => d.data() as CycleEntry);
   }
 
+  subscribe(callback: (cycles: CycleEntry[]) => void): () => void {
+    const q = query(this.colRef, orderBy("startDate"));
+    return onSnapshot(q, (snap: any) => {
+      callback(snap.docs.map((d: any) => d.data() as CycleEntry));
+    }, (error) => {
+      console.warn("Cycle subscription error:", error);
+    });
+  }
+
   async upsert(cycle: CycleEntry) {
-    await setDoc(doc(this.colRef, cycle.id), cycle);
+    await setDoc(doc(this.colRef, cycle.id), cleanData(cycle));
   }
 
   async delete(id: string) {
@@ -77,7 +99,7 @@ export class FirebaseCycleRepository implements CycleRepository {
   async bulkPut(cycles: CycleEntry[]) {
     const batch = writeBatch(db);
     cycles.forEach((cycle) => {
-      batch.set(doc(this.colRef, cycle.id), cycle);
+      batch.set(doc(this.colRef, cycle.id), cleanData(cycle));
     });
     await batch.commit();
   }
@@ -98,7 +120,7 @@ export class FirebaseCycleRepository implements CycleRepository {
   }
 
   async update(cycle: CycleEntry) {
-    await setDoc(doc(this.colRef, cycle.id), cycle, { merge: true });
+    await setDoc(doc(this.colRef, cycle.id), cleanData(cycle), { merge: true });
     return cycle;
   }
 }
@@ -116,6 +138,15 @@ export class FirebaseDailyLogRepository implements DailyLogRepository {
     return snap.docs.map((d) => d.data() as DailyLog);
   }
 
+  subscribe(callback: (logs: DailyLog[]) => void): () => void {
+    const q = query(this.colRef, orderBy("date"));
+    return onSnapshot(q, (snap: any) => {
+      callback(snap.docs.map((d: any) => d.data() as DailyLog));
+    }, (error) => {
+      console.warn("DailyLog subscription error:", error);
+    });
+  }
+
   async getByDate(date: string) {
     const q = query(this.colRef, where("date", "==", date));
     const snap = await getDocs(q);
@@ -130,7 +161,7 @@ export class FirebaseDailyLogRepository implements DailyLogRepository {
   }
 
   async upsert(log: DailyLog) {
-    await setDoc(doc(this.colRef, log.id), log);
+    await setDoc(doc(this.colRef, log.id), cleanData(log));
     return log;
   }
 
@@ -156,7 +187,7 @@ export class FirebaseDailyLogRepository implements DailyLogRepository {
   async bulkPut(logs: DailyLog[]) {
     const batch = writeBatch(db);
     logs.forEach((log) => {
-      batch.set(doc(this.colRef, log.id), log);
+      batch.set(doc(this.colRef, log.id), cleanData(log));
     });
     await batch.commit();
   }
@@ -176,7 +207,7 @@ export class FirebaseAdviceRepository implements AdviceRepository {
   }
 
   async save(advice: PersonalAdvicePackage) {
-    await setDoc(doc(this.colRef, advice.id), advice);
+    await setDoc(doc(this.colRef, advice.id), cleanData(advice));
   }
 
   async clear() {
@@ -201,23 +232,46 @@ export class FirebasePartnerConnectionRepository implements PartnerConnectionRep
   }
 
   async createInvite() {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const invite: PartnerInvite = {
-      code: `${Math.floor(100000 + Math.random() * 900000)}`,
+      code,
       createdAt: new Date().toISOString()
     };
-    await setDoc(this.settingsDoc, { partnerInvite: invite }, { merge: true });
+    
+    // Write invite to invites collection
+    await setDoc(doc(db, "invites", code), cleanData({
+      ...invite,
+      trackerUid: this.uid
+    }));
+    
+    await setDoc(this.settingsDoc, cleanData({ partnerInvite: invite }), { merge: true });
     return invite;
   }
 
-  async connectWithCode(_code: string) {
+  async connectWithCode(code: string) {
     const timestamp = new Date().toISOString();
+    
+    // Partner reads the invite
+    const inviteDoc = await getDoc(doc(db, "invites", code));
+    if (!inviteDoc.exists()) {
+      throw new Error("Invalid or expired code");
+    }
+    
+    const inviteData = inviteDoc.data();
+    const trackerUid = inviteData.trackerUid;
+    
+    // Partner updates the invite to let Tracker know they connected
+    await setDoc(doc(db, "invites", code), cleanData({ partnerUid: this.uid }), { merge: true });
+    
     const connection: PartnerConnection = {
-      id: "partner_connection",
-      status: "local-preview",
+      id: trackerUid,
+      status: "active",
       createdAt: timestamp,
       updatedAt: timestamp
     };
-    await setDoc(this.settingsDoc, { partnerConnection: connection }, { merge: true });
+    
+    // Save locally for partner
+    await setDoc(this.settingsDoc, cleanData({ partnerConnection: connection }), { merge: true });
     return connection;
   }
 
@@ -226,7 +280,10 @@ export class FirebasePartnerConnectionRepository implements PartnerConnectionRep
     const data = snap.data() || {};
     delete data.partnerConnection;
     delete data.partnerInvite;
-    await setDoc(this.settingsDoc, data);
+    
+    // In a real app we should also remove partnerUid from tracker's user doc
+    // and tracker should remove from partner's settings, but let's just clear local
+    await setDoc(this.settingsDoc, cleanData(data));
   }
 
   async pauseAccess() {
@@ -234,16 +291,16 @@ export class FirebasePartnerConnectionRepository implements PartnerConnectionRep
     if (conn) {
       conn.status = "paused";
       conn.updatedAt = new Date().toISOString();
-      await setDoc(this.settingsDoc, { partnerConnection: conn }, { merge: true });
+      await setDoc(this.settingsDoc, cleanData({ partnerConnection: conn }), { merge: true });
     }
   }
 
   async resumeAccess() {
     const conn = await this.getConnection();
     if (conn) {
-      conn.status = "local-preview";
+      conn.status = "active";
       conn.updatedAt = new Date().toISOString();
-      await setDoc(this.settingsDoc, { partnerConnection: conn }, { merge: true });
+      await setDoc(this.settingsDoc, cleanData({ partnerConnection: conn }), { merge: true });
     }
   }
 
@@ -253,7 +310,7 @@ export class FirebasePartnerConnectionRepository implements PartnerConnectionRep
   }
 
   async setDemoEnabled(enabled: boolean) {
-    await setDoc(this.settingsDoc, { demoEnabled: enabled }, { merge: true });
+    await setDoc(this.settingsDoc, cleanData({ demoEnabled: enabled }), { merge: true });
   }
 
   async clear() {
