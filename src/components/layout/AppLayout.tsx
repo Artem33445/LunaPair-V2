@@ -65,13 +65,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
         ) : null}
       </aside>
 
-      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] pt-[max(0.75rem,var(--safe-top))] md:pb-8 md:pt-4 lg:ml-72">
+      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] pt-[max(0.75rem,var(--safe-top))] md:pb-8 md:pt-4 lg:ml-72">
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-3 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/85 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom,0px))] pt-1.5 backdrop-blur-2xl lg:hidden shadow-[0_-8px_24px_rgba(0,0,0,0.06)]">
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-2xl lg:hidden shadow-[0_-6px_20px_rgba(0,0,0,0.06)] select-none"
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <div className="mx-auto grid max-w-md grid-cols-5 items-center">
           <MobileItem to={role === "partner" ? "/partner" : "/today"} label="Сегодня" icon={Home} />
           <MobileItem to={role === "partner" ? "/partner/calendar" : "/calendar"} label="Календарь" icon={CalendarDays} />
@@ -79,11 +82,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex justify-center">
             <motion.button
               whileTap={{ scale: 0.88 }}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-primary/85 text-white shadow-md shadow-primary/25 transition-shadow hover:shadow-lg hover:shadow-primary/35 active:shadow-sm"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-primary/85 text-white shadow-md shadow-primary/25 transition-shadow hover:shadow-lg hover:shadow-primary/35 active:shadow-sm select-none"
               onClick={() => navigate(role === "partner" ? "/partner/support" : "/log")}
               aria-label={role === "partner" ? "Поддержка" : "Добавить запись"}
+              onContextMenu={(e) => e.preventDefault()}
             >
-              {role === "partner" ? <HeartHandshake className="h-6 w-6" /> : <Plus className="h-6 w-6 stroke-[2.5]" />}
+              {role === "partner" ? <HeartHandshake className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />}
             </motion.button>
           </div>
 
@@ -127,9 +131,11 @@ function MobileItem({
     <NavLink
       to={to}
       end={to === "/partner" || to === "/today"}
+      draggable={false}
+      onContextMenu={(e) => e.preventDefault()}
       className={({ isActive }) =>
         cn(
-          "group relative flex min-h-[50px] flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[11px] font-semibold transition-all duration-200 active:scale-90",
+          "group relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[10.5px] font-semibold transition-all duration-200 active:scale-90 select-none",
           isActive ? "text-primary font-bold" : "text-muted hover:text-text"
         )
       }
@@ -137,7 +143,7 @@ function MobileItem({
       {({ isActive }) => (
         <>
           <div className="relative">
-            <Icon className={cn("h-5 w-5 transition-transform duration-200", isActive && "scale-110")} />
+            <Icon className={cn("h-5 w-5 transition-transform duration-200 pointer-events-none", isActive && "scale-105")} />
             {isActive && (
               <motion.span
                 layoutId="nav-dot"
@@ -146,7 +152,7 @@ function MobileItem({
               />
             )}
           </div>
-          <span className="leading-tight tracking-tight">{label}</span>
+          <span className="leading-tight tracking-tight pointer-events-none">{label}</span>
         </>
       )}
     </NavLink>

@@ -103,40 +103,31 @@ export function TodayPage() {
   ];
 
   return (
-    <div className="space-y-5 pb-2">
-      <header className="flex items-start justify-between gap-3 relative z-10 pt-1">
+    <div className="space-y-4 pb-4">
+      <header className="flex items-center justify-between gap-3 relative z-10 pt-1">
         <div>
-          <p className="text-xs sm:text-sm text-muted font-medium">{format(new Date(), "d MMMM, EEEE", { locale: localeRu })}</p>
+          <p className="text-xs text-muted font-medium">{format(new Date(), "d MMMM, EEEE", { locale: localeRu })}</p>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{name ? `Привет, ${name}` : "Привет!"}</h1>
-          <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primarySoft px-2.5 py-0.5 text-xs font-medium text-muted">
+          <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primarySoft px-2.5 py-0.5 text-xs font-medium text-muted">
             <ShieldCheck className="h-3.5 w-3.5 text-primary" />
             {authUser ? "Облачная синхронизация" : ru.localOnly}
           </p>
         </div>
-        <Button aria-label="Переключить тему" size="icon" variant="outline" onClick={() => void setTheme(profile?.theme === "dark" ? "light" : "dark")}>
-          {profile?.theme === "dark" ? <Sun /> : <Moon />}
+        <Button aria-label="Переключить тему" size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => void setTheme(profile?.theme === "dark" ? "light" : "dark")}>
+          {profile?.theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </header>
 
-      {profile?.role !== 'partner' && profile ? (
-        <DailyInsightWidget
-          profile={profile}
-          cycles={cycles}
-          prediction={prediction}
-          recentLogs={dailyLogs}
-        />
-      ) : null}
-
       <div className="mx-auto max-w-sm px-2 sm:px-0">
         <CycleRing prediction={prediction} />
-        <div className="text-center my-3">
+        <div className="text-center my-2.5">
           <p className="text-sm text-muted font-medium">{periodStatusText}</p>
         </div>
         <div className="grid grid-cols-3 gap-1.5 text-xs text-muted sm:grid-cols-5">
           {phaseLegendItems.map((item) => (
             <span
               key={item.key}
-              className="flex min-h-9 items-center justify-center rounded-xl bg-primarySoft/70 px-1.5 py-1 text-center text-[10.5px] font-medium leading-tight"
+              className="flex min-h-8 items-center justify-center rounded-xl bg-primarySoft/70 px-1 py-1 text-center text-[10px] font-medium leading-tight"
               aria-label={ru.phase[item.key]}
             >
               {item.label}
@@ -145,17 +136,23 @@ export function TodayPage() {
         </div>
       </div>
 
-      <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-        <Button className="col-span-2 sm:col-span-1 soft-pulse min-h-12" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
+      <section className="space-y-2 max-w-sm mx-auto w-full">
+        <Button className="w-full soft-pulse min-h-12 text-sm font-semibold rounded-2xl" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
           {periodActive ? "Закончились месячные" : "Начались месячные"}
         </Button>
-        <Button className="min-h-12" variant="outline" onClick={() => navigate("/log")}>Симптомы</Button>
-        <Button className="min-h-12" variant="outline" onClick={() => navigate("/log")}>Заметка дня</Button>
-        <Button className="min-h-12" variant="outline" onClick={() => navigate("/calendar")}>Календарь</Button>
-        <Button className="col-span-2 sm:col-span-1 min-h-12" variant="outline" onClick={() => navigate("/assistant")}><MessageCircle className="h-4 w-4" />Спросить Luna</Button>
+        <div className="grid grid-cols-3 gap-2">
+          <Button className="min-h-11 text-xs font-medium rounded-2xl" variant="outline" onClick={() => navigate("/log")}>Симптомы</Button>
+          <Button className="min-h-11 text-xs font-medium rounded-2xl" variant="outline" onClick={() => navigate("/log")}>Заметка дня</Button>
+          <Button className="min-h-11 text-xs font-medium rounded-2xl" variant="outline" onClick={() => navigate("/calendar")}>Календарь</Button>
+        </div>
+        <Button className="w-full min-h-11 text-sm font-medium rounded-2xl" variant="outline" onClick={() => navigate("/assistant")}>
+          <MessageCircle className="h-4 w-4 mr-2" />Спросить Luna
+        </Button>
       </section>
 
-      <MagicBento items={bentoItems} glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"} />
+      <div className="pt-2">
+        <MagicBento items={bentoItems} glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"} />
+      </div>
     </div>
   );
 }

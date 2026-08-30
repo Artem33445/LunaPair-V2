@@ -70,6 +70,8 @@
 
 * {
   box-sizing: border-box;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 
 /* Custom Cursors */
@@ -87,6 +89,10 @@ input[type="radio"],
 .cursor-pointer,
 [role="button"] {
   cursor: url('/cursor-pointer.svg') 6 4, pointer;
+  -webkit-touch-callout: none !important;
+  -webkit-user-drag: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 html {
@@ -97,7 +103,7 @@ html {
   overflow: hidden;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  scroll-padding-bottom: calc(var(--mobile-nav-height) + var(--safe-bottom) + 1rem);
+  scroll-padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 body {

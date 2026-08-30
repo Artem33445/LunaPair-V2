@@ -11,18 +11,18 @@ export function LogPage() {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-      <section className="space-y-5">
+      <section className="space-y-4">
         <header>
-          <h1 className="text-3xl font-bold">Ежедневная запись</h1>
-          <p className="text-muted">Настроение, симптомы, сон, энергия и приватные заметки хранятся локально.</p>
+          <h1 className="text-2xl font-bold">Ежедневная запись</h1>
+          <p className="text-xs text-muted">Настроение, симптомы, сон, энергия и приватные заметки.</p>
         </header>
-        <Card>
-          <div className="mb-5">
-            <FieldLabel htmlFor="log-date">Дата</FieldLabel>
-            <Input id="log-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <div className="rounded-3xl border border-border/70 bg-card overflow-hidden shadow-soft">
+          <div className="p-4 border-b border-border/50">
+            <FieldLabel htmlFor="log-date">Дата записи</FieldLabel>
+            <Input id="log-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="mt-1" />
           </div>
           <DayEditor key={date} date={date} />
-        </Card>
+        </div>
       </section>
 
       <Card>

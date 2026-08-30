@@ -1,19 +1,17 @@
-import { Heart, X } from "lucide-react";
+import { ChevronDown, Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "../../../components/ui/button";
-import { FieldLabel, Input, Textarea } from "../../../components/ui/field";
+import { Input, Textarea } from "../../../components/ui/field";
 import { ru } from "../../../i18n/ru";
-import { clamp } from "../../../lib/utils";
+import { clamp, cn } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
 import type {
   EnergyLevel,
   FlowLevel,
-  IntimacyAfterFeeling,
   IntimacyLog,
-  IntimacyType,
   Mood,
   ProtectionStatus,
   SleepQuality,
@@ -37,19 +35,11 @@ const moodEmojis: Record<Mood, string> = {
   happy: "😊", tired: "😴", tense: "😬"
 };
 
-type AssistantInsightKey = keyof typeof ru.assistantInsights;
-
-function isAssistantInsightKey(key: string): key is AssistantInsightKey {
-  return key in ru.assistantInsights;
-}
 const wellbeingEmojis: Record<WellbeingLevel, string> = {
   "very-bad": "🤒", bad: "🤕", normal: "😐", good: "🙂", excellent: "🤩"
 };
 const energyEmojis: Record<EnergyLevel, string> = {
   "very-low": "🪫", low: "🔋", normal: "⚡", high: "🚀", "very-high": "🔥"
-};
-const flowEmojis: Record<FlowLevel, string> = {
-  none: "⚪", spotting: "💧", light: "🩸", medium: "🩸🩸", heavy: "🩸🩸🩸"
 };
 
 function emptyIntimacy(): IntimacyLog {
@@ -69,7 +59,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
   const existing = useMemo(() => dailyLogs.find((log) => log.date === date), [dailyLogs, date]);
   const info = getCalendarDayInfo(date, cycles, profile?.averageCycleLength, profile?.averagePeriodLength);
   
-  const [flow, setFlow] = useState<FlowLevel>(existing?.flow ?? "spotting");
+  const [flow, setFlow] = useState<FlowLevel>(existing?.flow ?? "none");
   const [mood, setMood] = useState<Mood | "">(existing?.mood ?? "");
   const [moodChangedDuringDay, setMoodChangedDuringDay] = useState(existing?.moodChangedDuringDay ?? false);
   const [wellbeingValue, setWellbeingValue] = useState<WellbeingLevel | "">(existing?.wellbeing ?? "");
@@ -81,8 +71,19 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
   const [sleepHours, setSleepHours] = useState(existing?.sleepHours ?? 7);
   const [intimacy, setIntimacy] = useState<IntimacyLog>(existing?.intimacy ?? emptyIntimacy());
   const [note, setNote] = useState(existing?.note ?? "");
-  const [hiddenFromPartner, setHiddenFromPartner] = useState(existing?.hiddenFromPartner ?? false);
-  const [noteVisibleToPartner, setNoteVisibleToPartner] = useState(existing?.noteVisibleToPartner ?? false);
+  
+  const hasExtraData = Boolean(
+    existing?.mood ||
+    existing?.wellbeing ||
+    (existing?.symptoms && existing.symptoms.length > 0) ||
+    existing?.pain ||
+    existing?.painLevel ||
+    existing?.energyLevel ||
+    existing?.sleepQuality ||
+    existing?.note
+  );
+  const [showExtra, setShowExtra] = useState(hasExtraData);
+
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [insight, setInsight] = useState<string | null>(null);
@@ -91,19 +92,9 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
     setDirty(true);
   }
 
-  function triggerInsight(key: string) {
-    if (isAssistantInsightKey(key)) {
-      setInsight(ru.assistantInsights[key]);
-      setTimeout(() => setInsight(null), 5000);
-    }
-  }
-
   function toggleSymptom(symptom: string) {
     markDirty();
     setSymptoms((current) => (current.includes(symptom) ? current.filter((item) => item !== symptom) : [...current, symptom]));
-    // Map symptom to insight key if possible
-    if (symptom === "усталость") triggerInsight("tired");
-    if (symptom === "спазмы") triggerInsight("cramps");
   }
 
   function close() {
@@ -118,10 +109,6 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
     }
     if (customSymptom.length > 100) {
       setError("Поле «другое» не должно превышать 100 символов");
-      return;
-    }
-    if ((intimacy.note?.length ?? 0) > 300) {
-      setError("Приватная заметка не должна превышать 300 символов");
       return;
     }
     setError("");
@@ -139,9 +126,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
       sleepQuality: sleepValue || undefined,
       sleepHours,
       intimacy,
-      note: note.trim() || undefined,
-      hiddenFromPartner,
-      noteVisibleToPartner: !hiddenFromPartner && Boolean(note.trim()) && noteVisibleToPartner
+      note: note.trim() || undefined
     });
     setDirty(false);
     onClose?.();
@@ -158,7 +143,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
     <section
       role={compact ? "dialog" : undefined}
       aria-modal={compact ? "true" : undefined}
-      className={compact ? "mobile-sheet overflow-y-auto rounded-t-card bg-card p-4 shadow-soft sm:p-5 md:max-h-[82vh] md:rounded-card relative" : "space-y-5 relative"}
+      className="flex flex-col max-h-[88dvh] overflow-hidden bg-card text-text"
     >
       <AnimatePresence>
         {insight && (
@@ -166,7 +151,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
             initial={{ opacity: 0, y: -20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-20 left-1/2 z-50 flex w-[90%] max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl bg-card p-4 shadow-xl border border-primary/20"
+            className="fixed top-12 left-1/2 z-50 flex w-[90%] max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl bg-card p-4 shadow-xl border border-primary/20"
           >
             <Heart className="mt-0.5 h-5 w-5 shrink-0 text-coral" fill="currentColor" />
             <p className="text-sm font-medium leading-relaxed">{insight}</p>
@@ -174,252 +159,279 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
         )}
       </AnimatePresence>
 
-      <header className="-mx-4 -mt-4 mb-4 flex items-start justify-between gap-3 border-b border-border bg-card/95 p-4 sm:-mx-5 sm:-mt-5 sm:p-5">
+      <header className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-border/60 shrink-0">
         <div>
-          <p className="text-sm text-muted">{format(parseISO(date), "d MMMM yyyy", { locale: localeRu })}</p>
-          <h2 className="text-xl font-bold">
+          <p className="text-xs text-muted font-medium">{format(parseISO(date), "d MMMM yyyy", { locale: localeRu })}</p>
+          <h2 className="text-base sm:text-lg font-bold tracking-tight">
             {info.cycleDay}-й день цикла · {ru.phase[info.phase]}
           </h2>
-          <p className="mt-1 text-xs text-muted">
-            {info.isPredictedPeriod ? "Дата входит в прогноз месячных · " : ""}
-            {existing ? "есть сохранённая запись" : "записи пока нет"}
-          </p>
         </div>
         {onClose ? (
-          <Button variant="ghost" size="icon" aria-label="Закрыть" onClick={close}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Закрыть" onClick={close}>
             <X className="h-5 w-5" />
           </Button>
         ) : null}
       </header>
 
-      <div className="space-y-5">
-        <FieldSet title="Месячные">
-          <SegmentedGrid value={flow} values={["spotting", "none", "light", "medium", "heavy"]} labels={ru.flow} emojis={flowEmojis} onChange={(value) => { setFlow(value as FlowLevel); markDirty(); }} />
-        </FieldSet>
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 overscroll-contain">
+        {/* 1. Месячные / Выделения */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted">Месячные (выделения)</p>
+          <div className="grid grid-cols-5 gap-1.5">
+            {[
+              { val: "none", label: "Нет", emoji: "⚪" },
+              { val: "spotting", label: "Мазки", emoji: "💧" },
+              { val: "light", label: "Мало", emoji: "🩸" },
+              { val: "medium", label: "Средне", emoji: "🩸🩸" },
+              { val: "heavy", label: "Обильно", emoji: "🩸🩸🩸" }
+            ].map((item) => (
+              <button
+                key={item.val}
+                type="button"
+                onClick={() => { setFlow(item.val as FlowLevel); markDirty(); }}
+                className={cn(
+                  "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
+                  flow === item.val
+                    ? "bg-primary text-white font-semibold shadow-sm"
+                    : "bg-primarySoft/60 text-muted hover:text-text"
+                )}
+              >
+                <span className="text-sm">{item.emoji}</span>
+                <span className="text-[10px] mt-0.5 leading-tight">{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-        <FieldSet title="Настроение">
-          <SegmentedGrid value={mood} values={moods} labels={ru.mood} emojis={moodEmojis} onChange={(value) => { setMood(value as Mood); markDirty(); triggerInsight(value); }} />
-          <label className="mt-3 flex items-center gap-3 text-sm">
-            <input type="checkbox" className="h-5 w-5 accent-primary" checked={moodChangedDuringDay} onChange={(event) => { setMoodChangedDuringDay(event.target.checked); markDirty(); }} />
-            Настроение сильно менялось в течение дня
-          </label>
-        </FieldSet>
-
-        <FieldSet title="Самочувствие">
-          <SegmentedGrid value={wellbeingValue} values={wellbeing} labels={ru.wellbeing} emojis={wellbeingEmojis} onChange={(value) => { setWellbeingValue(value as WellbeingLevel); markDirty(); }} />
-        </FieldSet>
-
-        <FieldSet title="Основные симптомы">
-          <div className="flex flex-wrap gap-2">
-            {ru.symptoms.map((symptom) => {
-              const isSelected = symptoms.includes(symptom);
+        {/* 2. Половой акт */}
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted">Половой акт</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { val: "none", label: "Не было", icon: "—" },
+              { val: "protected", label: "С защитой", icon: "🛡️" },
+              { val: "unprotected", label: "Без защиты", icon: "❤️" }
+            ].map((item) => {
+              const active =
+                item.val === "none"
+                  ? intimacy.occurred === false
+                  : item.val === "protected"
+                    ? intimacy.occurred === true && intimacy.protection === "used"
+                    : intimacy.occurred === true && intimacy.protection === "not-used";
               return (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  key={symptom}
+                <button
+                  key={item.val}
                   type="button"
-                  className={`min-h-11 rounded-full border px-4 py-1 text-sm font-medium transition-colors ${isSelected ? "border-primary bg-primary text-card shadow-sm" : "border-border bg-card hover:bg-elevated text-text"}`}
-                  onClick={() => toggleSymptom(symptom)}
+                  onClick={() => {
+                    if (item.val === "none") {
+                      setIntimacy({ occurred: false });
+                    } else if (item.val === "protected") {
+                      setIntimacy({ occurred: true, protection: "used" });
+                    } else {
+                      setIntimacy({ occurred: true, protection: "not-used" });
+                    }
+                    markDirty();
+                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs transition active:scale-95",
+                    active
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-primarySoft/60 text-muted hover:text-text"
+                  )}
                 >
-                  {symptom}
-                </motion.button>
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
               );
             })}
           </div>
-          {symptoms.includes("другое") ? (
-            <Input className="mt-3" value={customSymptom} maxLength={100} placeholder="Коротко, до 100 символов" onChange={(event) => { setCustomSymptom(event.target.value); markDirty(); }} />
-          ) : null}
-        </FieldSet>
+        </div>
 
-        <FieldSet title="Боль">
-          <label className="flex items-center justify-between text-sm font-semibold">
-            <span>Уровень боли</span>
-            <span>{painLevel}/10 · {painText(painLevel)}</span>
-          </label>
-          <input className="mt-2 w-full accent-primary" type="range" min={0} max={10} value={painLevel} onChange={(event) => { setPainLevel(clamp(Number(event.target.value), 0, 10)); markDirty(); }} />
-          {painLevel >= 7 ? <p className="mt-2 rounded-2xl bg-coral/10 p-3 text-sm text-coral">Сильная или необычная боль может требовать консультации медицинского специалиста.</p> : null}
-        </FieldSet>
+        {/* 3. Кнопка Дополнительно */}
+        <button
+          type="button"
+          onClick={() => setShowExtra((prev) => !prev)}
+          className="flex w-full items-center justify-between rounded-xl bg-primarySoft/70 px-3.5 py-2.5 text-xs font-semibold text-primary transition active:scale-[0.98]"
+        >
+          <span>{showExtra ? "Скрыть дополнительные поля" : "+ Дополнительно (симптомы, настроение, сон, заметка)"}</span>
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", showExtra && "rotate-180")} />
+        </button>
 
-        <FieldSet title="Сон и энергия">
-          <SegmentedGrid value={energyLevel} values={energyLevels} labels={ru.energy} emojis={energyEmojis} onChange={(value) => { setEnergyLevel(value as EnergyLevel); markDirty(); }} />
-          <div className="mt-4">
-            <p className="mb-2 text-sm font-semibold">Качество сна</p>
-            <SegmentedRow value={sleepValue} values={sleepQuality} labels={ru.sleepQuality} onChange={(value) => { setSleepValue(value as SleepQuality); markDirty(); }} />
-          </div>
-          <label className="mt-4 flex items-center justify-between text-sm font-semibold">
-            <span>Сон, часов</span>
-            <span>{sleepHours}</span>
-          </label>
-          <input className="mt-2 w-full accent-primary" type="range" min={0} max={16} step={0.5} value={sleepHours} onChange={(event) => { setSleepHours(clamp(Number(event.target.value), 0, 16)); markDirty(); }} />
-        </FieldSet>
+        {/* 4. Раскрывающийся блок */}
+        <AnimatePresence>
+          {showExtra && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="space-y-4 pt-1 overflow-hidden"
+            >
+              {/* Настроение */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted">Настроение</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {moods.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => { setMood(item); markDirty(); }}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
+                        mood === item
+                          ? "bg-primary text-white font-semibold shadow-sm"
+                          : "bg-primarySoft/60 text-muted hover:text-text"
+                      )}
+                    >
+                      <span className="text-lg">{moodEmojis[item]}</span>
+                      <span className="text-[10px] mt-0.5 leading-tight">{ru.mood[item]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        <FieldSet title="Интимная близость">
-          <p className="mb-3 text-sm text-muted">Приватный раздел. По умолчанию эти данные не видны партнёру.</p>
-          <SegmentedRow
-            value={intimacy.occurred === null ? "unset" : intimacy.occurred ? "yes" : "no"}
-            values={["unset", "no", "yes"]}
-            labels={ru.intimacy.occurred}
-            onChange={(value) => {
-              setIntimacy(value === "unset" ? { occurred: null } : { ...intimacy, occurred: value === "yes" });
-              markDirty();
-            }}
-          />
-          {intimacy.occurred ? (
-            <div className="mt-4 space-y-4">
-              <SelectField label="Тип" value={intimacy.type ?? "prefer-not-to-say"} values={["penetrative", "non-penetrative", "prefer-not-to-say"]} labels={ru.intimacy.type} onChange={(value) => { setIntimacy({ ...intimacy, type: value as IntimacyType }); markDirty(); }} />
-              <SelectField label="Защита" value={intimacy.protection ?? "prefer-not-to-say"} values={["used", "not-used", "prefer-not-to-say"]} labels={ru.intimacy.protection} onChange={(value) => { setIntimacy({ ...intimacy, protection: value as ProtectionStatus }); markDirty(); }} />
-              <SelectField label="Самочувствие после" value={intimacy.afterFeeling ?? "fine"} values={["fine", "discomfort", "pain", "note-only"]} labels={ru.intimacy.afterFeeling} onChange={(value) => { setIntimacy({ ...intimacy, afterFeeling: value as IntimacyAfterFeeling }); markDirty(); }} />
-              <Textarea value={intimacy.note ?? ""} maxLength={300} placeholder="Приватная заметка, до 300 символов" onChange={(event) => { setIntimacy({ ...intimacy, note: event.target.value }); markDirty(); }} />
-            </div>
-          ) : null}
-        </FieldSet>
+              {/* Самочувствие */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted">Общее самочувствие</p>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {wellbeing.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => { setWellbeingValue(item); markDirty(); }}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
+                        wellbeingValue === item
+                          ? "bg-primary text-white font-semibold shadow-sm"
+                          : "bg-primarySoft/60 text-muted hover:text-text"
+                      )}
+                    >
+                      <span className="text-lg">{wellbeingEmojis[item]}</span>
+                      <span className="text-[10px] mt-0.5 leading-tight">{ru.wellbeing[item]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-        <FieldSet title="Описание дня">
-          <FieldLabel htmlFor={`note-${date}`}>Описание дня</FieldLabel>
-          <Textarea id={`note-${date}`} value={note} maxLength={1000} placeholder="Запиши то, что захочется вспомнить позже" onChange={(event) => { setNote(event.target.value); markDirty(); }} />
-          <p className="text-xs text-muted">{note.length}/1000</p>
-          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-primarySoft p-3 text-sm">
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-5 w-5 accent-primary"
-                checked={hiddenFromPartner}
-                onChange={(event) => {
-                  setHiddenFromPartner(event.target.checked);
-                  markDirty();
-                }}
-              />
-              <span>
-                <span className="block font-semibold">Скрыть этот день от партнёра</span>
-                <span className="text-muted">Партнёр увидит только дату без самочувствия, заметок и маркеров.</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 h-5 w-5 accent-primary"
-                checked={noteVisibleToPartner}
-                disabled={hiddenFromPartner}
-                onChange={(event) => {
-                  setNoteVisibleToPartner(event.target.checked);
-                  markDirty();
-                }}
-              />
-              <span>
-                <span className="block font-semibold">Открыть эту заметку партнёру</span>
-                <span className="text-muted">Заметка появится в партнёрском режиме только если общий доступ к комментариям включён в профиле.</span>
-              </span>
-            </label>
-          </div>
-        </FieldSet>
+              {/* Симптомы */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted">Симптомы</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ru.symptoms.map((symptom) => {
+                    const isSelected = symptoms.includes(symptom);
+                    return (
+                      <button
+                        key={symptom}
+                        type="button"
+                        className={cn(
+                          "rounded-full px-3 py-1 text-xs font-medium transition active:scale-95",
+                          isSelected
+                            ? "bg-primary text-white font-semibold shadow-sm"
+                            : "bg-primarySoft/60 text-muted hover:text-text"
+                        )}
+                        onClick={() => toggleSymptom(symptom)}
+                      >
+                        {symptom}
+                      </button>
+                    );
+                  })}
+                </div>
+                {symptoms.includes("другое") && (
+                  <Input
+                    className="mt-2 text-xs"
+                    value={customSymptom}
+                    maxLength={100}
+                    placeholder="Укажите другой симптом"
+                    onChange={(event) => { setCustomSymptom(event.target.value); markDirty(); }}
+                  />
+                )}
+              </div>
 
-        {error ? <p className="rounded-2xl bg-coral/10 p-3 text-sm text-coral">{error}</p> : null}
+              {/* Боль */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-muted">Уровень боли</span>
+                  <span>{painLevel}/10 · {painText(painLevel)}</span>
+                </div>
+                <input
+                  className="w-full accent-primary h-2 bg-primarySoft rounded-lg cursor-pointer"
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={painLevel}
+                  onChange={(event) => { setPainLevel(clamp(Number(event.target.value), 0, 10)); markDirty(); }}
+                />
+              </div>
 
-        <footer className="-mx-4 -mb-4 flex flex-col gap-3 border-t border-border bg-card/95 p-4 pb-[max(1rem,var(--safe-bottom))] sm:-mx-5 sm:-mb-5 sm:flex-row sm:p-5 sm:pb-5">
-          <Button className="flex-1" onClick={() => void save()}>
-            {existing ? "Сохранить изменения" : "Сохранить день"}
-          </Button>
-          {existing ? <Button variant="outline" onClick={() => void clear()}>Очистить</Button> : null}
-          <Button variant="ghost" onClick={onClose ? close : () => setDirty(false)}>Отмена</Button>
-        </footer>
+              {/* Сон и энергия */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted">Энергия</p>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {energyLevels.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => { setEnergyLevel(item); markDirty(); }}
+                      className={cn(
+                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
+                        energyLevel === item
+                          ? "bg-primary text-white font-semibold shadow-sm"
+                          : "bg-primarySoft/60 text-muted hover:text-text"
+                      )}
+                    >
+                      <span className="text-base">{energyEmojis[item]}</span>
+                      <span className="text-[10px] mt-0.5 leading-tight">{ru.energy[item]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="text-muted">Сон, часов</span>
+                  <span>{sleepHours} ч</span>
+                </div>
+                <input
+                  className="w-full accent-primary h-2 bg-primarySoft rounded-lg cursor-pointer"
+                  type="range"
+                  min={0}
+                  max={16}
+                  step={0.5}
+                  value={sleepHours}
+                  onChange={(event) => { setSleepHours(clamp(Number(event.target.value), 0, 16)); markDirty(); }}
+                />
+              </div>
+
+              {/* Заметка дня */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted">Заметка дня</p>
+                <Textarea
+                  value={note}
+                  maxLength={1000}
+                  placeholder="Запиши то, что захочется вспомнить позже..."
+                  className="text-xs min-h-[70px]"
+                  onChange={(event) => { setNote(event.target.value); markDirty(); }}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {error && <p className="rounded-xl bg-coral/10 p-2.5 text-xs text-coral">{error}</p>}
       </div>
+
+      <footer className="flex gap-2.5 border-t border-border/60 bg-card p-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shrink-0">
+        <Button className="flex-1 min-h-11 text-sm font-semibold rounded-2xl shadow-md" onClick={() => void save()}>
+          {existing ? "Сохранить изменения" : "Сохранить день"}
+        </Button>
+        {existing && (
+          <Button variant="outline" className="min-h-11 text-xs rounded-2xl" onClick={() => void clear()}>
+            Очистить
+          </Button>
+        )}
+        <Button variant="ghost" className="min-h-11 text-xs rounded-2xl" onClick={onClose ? close : () => setDirty(false)}>
+          Отмена
+        </Button>
+      </footer>
     </section>
-  );
-}
-
-function FieldSet({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-card border border-border bg-card/80 p-5 glass-panel">
-      <h3 className="mb-4 font-bold tracking-tight">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-function SegmentedGrid<T extends string>({
-  value,
-  values,
-  labels,
-  emojis,
-  onChange
-}: {
-  value: string;
-  values: readonly T[];
-  labels: Record<T, string>;
-  emojis: Record<T, string>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {values.map((item) => (
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          key={item}
-          type="button"
-          aria-pressed={value === item}
-          className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border p-2 text-center transition-all ${value === item ? "border-primary bg-primarySoft text-primary shadow-sm" : "border-border bg-card text-muted hover:bg-elevated hover:text-text"}`}
-          onClick={() => onChange(item)}
-        >
-          <span className="text-2xl">{emojis[item]}</span>
-          <span className="text-[11px] font-bold uppercase tracking-wider">{labels[item]}</span>
-        </motion.button>
-      ))}
-    </div>
-  );
-}
-
-function SegmentedRow<T extends string>({
-  value,
-  values,
-  labels,
-  onChange
-}: {
-  value: string;
-  values: readonly T[];
-  labels: Record<T, string>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {values.map((item) => (
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          key={item}
-          type="button"
-          aria-pressed={value === item}
-          className={`min-h-11 rounded-full border px-4 py-1 text-sm font-medium transition-colors ${value === item ? "border-primary bg-primary text-card shadow-sm" : "border-border bg-card text-muted hover:bg-elevated hover:text-text"}`}
-          onClick={() => onChange(item)}
-        >
-          {labels[item]}
-        </motion.button>
-      ))}
-    </div>
-  );
-}
-
-function SelectField<T extends string>({
-  label,
-  value,
-  values,
-  labels,
-  onChange
-}: {
-  label: string;
-  value: T;
-  values: readonly T[];
-  labels: Record<T, string>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <label className="block text-sm font-semibold">
-      {label}
-      <select className="mt-2 min-h-12 w-full rounded-2xl border border-border bg-card px-4 text-base" value={value} onChange={(event) => onChange(event.target.value as T)}>
-        {values.map((item) => (
-          <option key={item} value={item}>
-            {labels[item]}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
