@@ -65,14 +65,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         ) : null}
       </aside>
 
-      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] pt-[max(0.75rem,var(--safe-top))] md:pb-8 md:pt-4 lg:ml-72">
+      <main className="app-scroll app-safe-area flex min-h-dvh min-w-0 flex-col pb-14 pt-[max(0.75rem,var(--safe-top))] md:pb-8 md:pt-4 lg:ml-72">
         <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-3 sm:px-6 lg:px-8">
           {children}
         </div>
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-2 pb-[env(safe-area-inset-bottom,0px)] pt-1 backdrop-blur-2xl lg:hidden select-none"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-2 py-1 backdrop-blur-2xl lg:hidden select-none"
         onContextMenu={(e) => e.preventDefault()}
       >
         <div className="mx-auto grid max-w-md grid-cols-5 items-center">
@@ -82,7 +82,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex justify-center">
             <motion.button
               whileTap={{ scale: 0.88 }}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-primary/85 text-white shadow-md shadow-primary/25 transition-shadow hover:shadow-lg hover:shadow-primary/35 active:shadow-sm select-none"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-primary/85 text-white shadow-md shadow-primary/25 transition-shadow hover:shadow-lg hover:shadow-primary/35 active:shadow-sm select-none"
               onClick={() => navigate(role === "partner" ? "/partner/support" : "/log")}
               aria-label={role === "partner" ? "Поддержка" : "Добавить запись"}
               onContextMenu={(e) => e.preventDefault()}
@@ -135,7 +135,7 @@ function MobileItem({
       onContextMenu={(e) => e.preventDefault()}
       className={({ isActive }) =>
         cn(
-          "group relative flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[10.5px] font-semibold transition-all duration-200 active:scale-90 select-none",
+          "group relative flex min-h-[40px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-0.5 text-[10px] font-semibold transition-all duration-200 active:scale-90 select-none",
           isActive ? "text-primary font-bold" : "text-muted hover:text-text"
         )
       }
