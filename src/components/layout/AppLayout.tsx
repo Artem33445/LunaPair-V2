@@ -72,7 +72,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card/95 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))] pt-1 backdrop-blur-2xl lg:hidden shadow-[0_-6px_20px_rgba(0,0,0,0.06)] select-none"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-card px-2 pb-[env(safe-area-inset-bottom,0px)] pt-1 backdrop-blur-2xl lg:hidden select-none"
         onContextMenu={(e) => e.preventDefault()}
       >
         <div className="mx-auto grid max-w-md grid-cols-5 items-center">

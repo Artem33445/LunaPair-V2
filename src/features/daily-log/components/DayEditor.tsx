@@ -1,4 +1,4 @@
-import { ChevronDown, Heart, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
@@ -13,8 +13,6 @@ import type {
   FlowLevel,
   IntimacyLog,
   Mood,
-  ProtectionStatus,
-  SleepQuality,
   WellbeingLevel
 } from "../../../types";
 import { getCalendarDayInfo } from "../../cycle/domain/cycleCalculations";
@@ -23,21 +21,38 @@ interface Props {
   date: string;
   compact?: boolean;
   onClose?: () => void;
+  onDateChange?: (date: string) => void;
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
 }
 
 const moods = ["good", "calm", "energetic", "sensitive", "changeable", "irritated", "anxious", "sad"] as const;
 const wellbeing = ["very-bad", "bad", "normal", "good", "excellent"] as const;
 const energyLevels = ["very-low", "low", "normal", "high", "very-high"] as const;
-const sleepQuality = ["bad", "normal", "good"] as const;
 
 const moodEmojis: Record<Mood, string> = {
   good: "🙂", calm: "😌", energetic: "🤩", sensitive: "🥺", changeable: "🎢", irritated: "😤", anxious: "😰", sad: "😢",
   happy: "😊", tired: "😴", tense: "😬"
 };
 
+const shortMoodNames: Record<Mood, string> = {
+  good: "Хорошо",
+  calm: "Спокойно",
+  energetic: "Энергия",
+  sensitive: "Нежность",
+  changeable: "Качели",
+  irritated: "Злость",
+  anxious: "Тревога",
+  sad: "Грусть",
+  happy: "Радость",
+  tired: "Усталость",
+  tense: "Стресс"
+};
+
 const wellbeingEmojis: Record<WellbeingLevel, string> = {
   "very-bad": "🤒", bad: "🤕", normal: "😐", good: "🙂", excellent: "🤩"
 };
+
 const energyEmojis: Record<EnergyLevel, string> = {
   "very-low": "🪫", low: "🔋", normal: "⚡", high: "🚀", "very-high": "🔥"
 };
@@ -47,42 +62,28 @@ function emptyIntimacy(): IntimacyLog {
 }
 
 function painText(value: number) {
-  if (value === 0) return "нет боли";
+  if (value === 0) return "нет";
   if (value <= 3) return "слабая";
   if (value <= 6) return "умеренная";
   if (value <= 8) return "сильная";
   return "очень сильная";
 }
 
-export function DayEditor({ date, compact = false, onClose }: Props) {
+export function DayEditor({ date, compact = false, onClose, onDateChange, onPrevDay, onNextDay }: Props) {
   const { cycles, profile, dailyLogs, saveDailyLog, deleteDailyLogByDate } = useAppStore();
   const existing = useMemo(() => dailyLogs.find((log) => log.date === date), [dailyLogs, date]);
   const info = getCalendarDayInfo(date, cycles, profile?.averageCycleLength, profile?.averagePeriodLength);
-  
+
   const [flow, setFlow] = useState<FlowLevel>(existing?.flow ?? "none");
   const [mood, setMood] = useState<Mood | "">(existing?.mood ?? "");
-  const [moodChangedDuringDay, setMoodChangedDuringDay] = useState(existing?.moodChangedDuringDay ?? false);
   const [wellbeingValue, setWellbeingValue] = useState<WellbeingLevel | "">(existing?.wellbeing ?? "");
   const [symptoms, setSymptoms] = useState<string[]>(existing?.symptoms ?? []);
   const [customSymptom, setCustomSymptom] = useState(existing?.customSymptom ?? "");
   const [painLevel, setPainLevel] = useState(existing?.painLevel ?? existing?.pain ?? 0);
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | "">(existing?.energyLevel ?? "");
-  const [sleepValue, setSleepValue] = useState<SleepQuality | "">(existing?.sleepQuality ?? "");
-  const [sleepHours, setSleepHours] = useState(existing?.sleepHours ?? 7);
+  const [sleepHours, setSleepHours] = useState(existing?.sleepHours ?? 7.5);
   const [intimacy, setIntimacy] = useState<IntimacyLog>(existing?.intimacy ?? emptyIntimacy());
   const [note, setNote] = useState(existing?.note ?? "");
-  
-  const hasExtraData = Boolean(
-    existing?.mood ||
-    existing?.wellbeing ||
-    (existing?.symptoms && existing.symptoms.length > 0) ||
-    existing?.pain ||
-    existing?.painLevel ||
-    existing?.energyLevel ||
-    existing?.sleepQuality ||
-    existing?.note
-  );
-  const [showExtra, setShowExtra] = useState(hasExtraData);
 
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
@@ -115,7 +116,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
     await saveDailyLog({
       date,
       mood: mood || undefined,
-      moodChangedDuringDay,
+      moodChangedDuringDay: false,
       wellbeing: wellbeingValue || undefined,
       flow,
       symptoms,
@@ -123,7 +124,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
       pain: painLevel,
       painLevel,
       energyLevel: energyLevel || undefined,
-      sleepQuality: sleepValue || undefined,
+      sleepQuality: sleepHours >= 8 ? "good" : sleepHours >= 6 ? "normal" : "bad",
       sleepHours,
       intimacy,
       note: note.trim() || undefined
@@ -143,7 +144,7 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
     <section
       role={compact ? "dialog" : undefined}
       aria-modal={compact ? "true" : undefined}
-      className="flex flex-col max-h-[88dvh] overflow-hidden bg-card text-text"
+      className={cn("flex flex-1 min-h-0 flex-col overflow-hidden text-text", compact ? "bg-card" : "bg-transparent")}
     >
       <AnimatePresence>
         {insight && (
@@ -159,24 +160,49 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
         )}
       </AnimatePresence>
 
-      <header className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-border/60 shrink-0">
-        <div>
-          <p className="text-xs text-muted font-medium">{format(parseISO(date), "d MMMM yyyy", { locale: localeRu })}</p>
-          <h2 className="text-base sm:text-lg font-bold tracking-tight">
-            {info.cycleDay}-й день цикла · {ru.phase[info.phase]}
-          </h2>
+      {/* Header */}
+      <header className="flex items-center justify-between gap-2 px-1 pt-2 pb-2.5 border-b border-border/40 shrink-0">
+        <div className="min-w-0 flex items-center gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold tracking-tight">
+              {format(parseISO(date), "d MMMM yyyy", { locale: localeRu })}
+            </h2>
+            <p className="text-xs text-muted font-medium">
+              {info.cycleDay}-й день цикла · {ru.phase[info.phase]}
+            </p>
+          </div>
         </div>
-        {onClose ? (
+
+        {onPrevDay && onNextDay ? (
+          <div className="flex items-center gap-1 shrink-0 bg-card/80 border border-border/60 rounded-2xl p-1 shadow-sm">
+            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-xl" onClick={onPrevDay} aria-label="Предыдущий день">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <label className="relative flex items-center justify-center px-1.5 py-0.5 rounded-xl hover:bg-primarySoft cursor-pointer text-xs font-semibold">
+              <CalendarIcon className="h-4 w-4 text-primary" />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => e.target.value && onDateChange?.(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              />
+            </label>
+            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-xl" onClick={onNextDay} aria-label="Следующий день">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : onClose ? (
           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Закрыть" onClick={close}>
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         ) : null}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 overscroll-contain">
+      {/* Scrollable / Form Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-1 py-2.5 space-y-3 overscroll-contain">
         {/* 1. Месячные / Выделения */}
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted">Месячные (выделения)</p>
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Месячные (выделения)</p>
           <div className="grid grid-cols-5 gap-1.5">
             {[
               { val: "none", label: "Нет", emoji: "⚪" },
@@ -190,10 +216,10 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
                 type="button"
                 onClick={() => { setFlow(item.val as FlowLevel); markDirty(); }}
                 className={cn(
-                  "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
+                  "flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl text-center transition active:scale-95",
                   flow === item.val
                     ? "bg-primary text-white font-semibold shadow-sm"
-                    : "bg-primarySoft/60 text-muted hover:text-text"
+                    : "bg-card/90 border border-border/60 text-muted hover:text-text"
                 )}
               >
                 <span className="text-sm">{item.emoji}</span>
@@ -204,9 +230,9 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
         </div>
 
         {/* 2. Половой акт */}
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-muted">Половой акт</p>
-          <div className="grid grid-cols-3 gap-2">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Половой акт</p>
+          <div className="grid grid-cols-3 gap-1.5">
             {[
               { val: "none", label: "Не было", icon: "—" },
               { val: "protected", label: "С защитой", icon: "🛡️" },
@@ -233,204 +259,195 @@ export function DayEditor({ date, compact = false, onClose }: Props) {
                     markDirty();
                   }}
                   className={cn(
-                    "flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-xs transition active:scale-95",
+                    "flex items-center justify-center gap-1.5 py-2 px-2 rounded-2xl text-xs transition active:scale-95",
                     active
                       ? "bg-primary text-white font-semibold shadow-sm"
-                      : "bg-primarySoft/60 text-muted hover:text-text"
+                      : "bg-card/90 border border-border/60 text-muted hover:text-text"
                   )}
                 >
                   <span>{item.icon}</span>
-                  <span>{item.label}</span>
+                  <span className="font-medium text-[11px]">{item.label}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 3. Кнопка Дополнительно */}
-        <button
-          type="button"
-          onClick={() => setShowExtra((prev) => !prev)}
-          className="flex w-full items-center justify-between rounded-xl bg-primarySoft/70 px-3.5 py-2.5 text-xs font-semibold text-primary transition active:scale-[0.98]"
-        >
-          <span>{showExtra ? "Скрыть дополнительные поля" : "+ Дополнительно (симптомы, настроение, сон, заметка)"}</span>
-          <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", showExtra && "rotate-180")} />
-        </button>
-
-        {/* 4. Раскрывающийся блок */}
-        <AnimatePresence>
-          {showExtra && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-4 pt-1 overflow-hidden"
-            >
-              {/* Настроение */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Настроение</p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {moods.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => { setMood(item); markDirty(); }}
-                      className={cn(
-                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
-                        mood === item
-                          ? "bg-primary text-white font-semibold shadow-sm"
-                          : "bg-primarySoft/60 text-muted hover:text-text"
-                      )}
-                    >
-                      <span className="text-lg">{moodEmojis[item]}</span>
-                      <span className="text-[10px] mt-0.5 leading-tight">{ru.mood[item]}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Самочувствие */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Общее самочувствие</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {wellbeing.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => { setWellbeingValue(item); markDirty(); }}
-                      className={cn(
-                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
-                        wellbeingValue === item
-                          ? "bg-primary text-white font-semibold shadow-sm"
-                          : "bg-primarySoft/60 text-muted hover:text-text"
-                      )}
-                    >
-                      <span className="text-lg">{wellbeingEmojis[item]}</span>
-                      <span className="text-[10px] mt-0.5 leading-tight">{ru.wellbeing[item]}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Симптомы */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Симптомы</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {ru.symptoms.map((symptom) => {
-                    const isSelected = symptoms.includes(symptom);
-                    return (
-                      <button
-                        key={symptom}
-                        type="button"
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs font-medium transition active:scale-95",
-                          isSelected
-                            ? "bg-primary text-white font-semibold shadow-sm"
-                            : "bg-primarySoft/60 text-muted hover:text-text"
-                        )}
-                        onClick={() => toggleSymptom(symptom)}
-                      >
-                        {symptom}
-                      </button>
-                    );
-                  })}
-                </div>
-                {symptoms.includes("другое") && (
-                  <Input
-                    className="mt-2 text-xs"
-                    value={customSymptom}
-                    maxLength={100}
-                    placeholder="Укажите другой симптом"
-                    onChange={(event) => { setCustomSymptom(event.target.value); markDirty(); }}
-                  />
+        {/* 3. Настроение */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Настроение</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {moods.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => { setMood(mood === item ? "" : item); markDirty(); }}
+                className={cn(
+                  "flex flex-col items-center justify-center py-1.5 px-1 rounded-2xl text-center transition active:scale-95",
+                  mood === item
+                    ? "bg-primary text-white font-semibold shadow-sm"
+                    : "bg-card/90 border border-border/60 text-muted hover:text-text"
                 )}
-              </div>
+              >
+                <span className="text-base">{moodEmojis[item]}</span>
+                <span className="text-[10px] mt-0.5 leading-tight">{shortMoodNames[item] || ru.mood[item]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-              {/* Боль */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-muted">Уровень боли</span>
-                  <span>{painLevel}/10 · {painText(painLevel)}</span>
-                </div>
-                <input
-                  className="w-full accent-primary h-2 bg-primarySoft rounded-lg cursor-pointer"
-                  type="range"
-                  min={0}
-                  max={10}
-                  value={painLevel}
-                  onChange={(event) => { setPainLevel(clamp(Number(event.target.value), 0, 10)); markDirty(); }}
-                />
-              </div>
+        {/* 4. Самочувствие и Энергия */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Самочувствие */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Самочувствие</p>
+            <div className="grid grid-cols-5 gap-1">
+              {wellbeing.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => { setWellbeingValue(wellbeingValue === item ? "" : item); markDirty(); }}
+                  className={cn(
+                    "flex flex-col items-center justify-center py-1.5 px-0.5 rounded-2xl text-center transition active:scale-95",
+                    wellbeingValue === item
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-card/90 border border-border/60 text-muted hover:text-text"
+                  )}
+                  title={ru.wellbeing[item]}
+                >
+                  <span className="text-base">{wellbeingEmojis[item]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-              {/* Сон и энергия */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Энергия</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {energyLevels.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => { setEnergyLevel(item); markDirty(); }}
-                      className={cn(
-                        "flex flex-col items-center justify-center py-2 px-1 rounded-xl text-center transition active:scale-95",
-                        energyLevel === item
-                          ? "bg-primary text-white font-semibold shadow-sm"
-                          : "bg-primarySoft/60 text-muted hover:text-text"
-                      )}
-                    >
-                      <span className="text-base">{energyEmojis[item]}</span>
-                      <span className="text-[10px] mt-0.5 leading-tight">{ru.energy[item]}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Энергия */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Энергия</p>
+            <div className="grid grid-cols-5 gap-1">
+              {energyLevels.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => { setEnergyLevel(energyLevel === item ? "" : item); markDirty(); }}
+                  className={cn(
+                    "flex flex-col items-center justify-center py-1.5 px-0.5 rounded-2xl text-center transition active:scale-95",
+                    energyLevel === item
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-card/90 border border-border/60 text-muted hover:text-text"
+                  )}
+                  title={ru.energy[item]}
+                >
+                  <span className="text-base">{energyEmojis[item]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-muted">Сон, часов</span>
-                  <span>{sleepHours} ч</span>
-                </div>
-                <input
-                  className="w-full accent-primary h-2 bg-primarySoft rounded-lg cursor-pointer"
-                  type="range"
-                  min={0}
-                  max={16}
-                  step={0.5}
-                  value={sleepHours}
-                  onChange={(event) => { setSleepHours(clamp(Number(event.target.value), 0, 16)); markDirty(); }}
-                />
-              </div>
-
-              {/* Заметка дня */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted">Заметка дня</p>
-                <Textarea
-                  value={note}
-                  maxLength={1000}
-                  placeholder="Запиши то, что захочется вспомнить позже..."
-                  className="text-xs min-h-[70px]"
-                  onChange={(event) => { setNote(event.target.value); markDirty(); }}
-                />
-              </div>
-            </motion.div>
+        {/* 5. Симптомы */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Симптомы</p>
+          <div className="flex flex-wrap gap-1">
+            {ru.symptoms.map((symptom) => {
+              const isSelected = symptoms.includes(symptom);
+              return (
+                <button
+                  key={symptom}
+                  type="button"
+                  className={cn(
+                    "rounded-xl px-2.5 py-1 text-[11px] font-medium transition active:scale-95",
+                    isSelected
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-card/90 border border-border/60 text-muted hover:text-text"
+                  )}
+                  onClick={() => toggleSymptom(symptom)}
+                >
+                  {symptom}
+                </button>
+              );
+            })}
+          </div>
+          {symptoms.includes("другое") && (
+            <Input
+              className="mt-1 text-xs h-8 rounded-xl"
+              value={customSymptom}
+              maxLength={100}
+              placeholder="Укажите другой симптом"
+              onChange={(event) => { setCustomSymptom(event.target.value); markDirty(); }}
+            />
           )}
-        </AnimatePresence>
+        </div>
 
-        {error && <p className="rounded-xl bg-coral/10 p-2.5 text-xs text-coral">{error}</p>}
+        {/* 6. Боль и Сон */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Боль */}
+          <div className="space-y-1 rounded-2xl bg-card/90 p-2 border border-border/60">
+            <div className="flex items-center justify-between text-[11px] font-semibold">
+              <span className="text-muted">Боль</span>
+              <span>{painLevel}/10 ({painText(painLevel)})</span>
+            </div>
+            <input
+              className="w-full accent-primary h-1.5 bg-primarySoft rounded-lg cursor-pointer"
+              type="range"
+              min={0}
+              max={10}
+              value={painLevel}
+              onChange={(event) => { setPainLevel(clamp(Number(event.target.value), 0, 10)); markDirty(); }}
+            />
+          </div>
+
+          {/* Сон */}
+          <div className="space-y-1 rounded-2xl bg-card/90 p-2 border border-border/60">
+            <div className="flex items-center justify-between text-[11px] font-semibold">
+              <span className="text-muted">Сон</span>
+              <span>{sleepHours} ч</span>
+            </div>
+            <input
+              className="w-full accent-primary h-1.5 bg-primarySoft rounded-lg cursor-pointer"
+              type="range"
+              min={0}
+              max={14}
+              step={0.5}
+              value={sleepHours}
+              onChange={(event) => { setSleepHours(clamp(Number(event.target.value), 0, 14)); markDirty(); }}
+            />
+          </div>
+        </div>
+
+        {/* 7. Заметка дня */}
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Заметка дня</p>
+          <Textarea
+            value={note}
+            maxLength={1000}
+            placeholder="Запиши то, что захочется вспомнить позже..."
+            className="text-xs min-h-[45px] rounded-2xl border-border/60 bg-card/90"
+            onChange={(event) => { setNote(event.target.value); markDirty(); }}
+          />
+        </div>
+
+        {error && <p className="rounded-2xl bg-coral/10 p-2.5 text-xs text-coral">{error}</p>}
       </div>
 
-      <footer className="flex gap-2.5 border-t border-border/60 bg-card p-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shrink-0">
-        <Button className="flex-1 min-h-11 text-sm font-semibold rounded-2xl shadow-md" onClick={() => void save()}>
+      {/* Action Buttons */}
+      <footer className="sticky bottom-0 z-20 flex items-center gap-2.5 pt-2 pb-1 px-0.5 bg-gradient-to-t from-background via-background/95 to-transparent shrink-0">
+        <Button
+          className="flex-1 min-h-12 text-sm font-bold rounded-2xl shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 text-white hover:brightness-105 active:scale-[0.98] transition-all"
+          onClick={() => void save()}
+        >
           {existing ? "Сохранить изменения" : "Сохранить день"}
         </Button>
         {existing && (
-          <Button variant="outline" className="min-h-11 text-xs rounded-2xl" onClick={() => void clear()}>
+          <Button variant="outline" className="min-h-12 px-4 text-xs rounded-2xl border-border/70 hover:bg-card" onClick={() => void clear()}>
             Очистить
           </Button>
         )}
-        <Button variant="ghost" className="min-h-11 text-xs rounded-2xl" onClick={onClose ? close : () => setDirty(false)}>
-          Отмена
-        </Button>
+        {onClose && (
+          <Button variant="ghost" className="min-h-12 px-4 text-xs rounded-2xl hover:bg-card/60" onClick={close}>
+            Отмена
+          </Button>
+        )}
       </footer>
     </section>
   );

@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Download, Eye, KeyRound, LogOut, Moon, PauseCircle, RotateCcw, Sun, Upload, XCircle } from "lucide-react";
+import { Download, Eye, KeyRound, LogOut, Moon, PauseCircle, RotateCcw, Sun, Upload, XCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
@@ -12,29 +12,16 @@ import { motion } from "framer-motion";
 import type { PartnerAccessLevel, PartnerSharingPreferences, PartnerSupportPreferences, UserRole } from "../../../types";
 import {
   applyPartnerAccessLevel,
-  normalizePartnerSharing,
-  permissionMeta,
-  type PartnerPermissionKey
+  normalizePartnerSharing
 } from "../../partner/domain/partnerPermissions";
 import { loginWithGoogle } from "../../../lib/firebase";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 
-const sectionTitles = {
-  cycle: "Цикл и прогноз",
-  calendar: "Календарь",
-  wellbeing: "Самочувствие",
-  comments: "Комментарии",
-  statistics: "Статистика",
-  private: "Приватные данные",
-  support: "Предпочтения поддержки"
-} as const;
+
 
 const accessLevels: Array<{ value: PartnerAccessLevel; title: string; text: string }> = [
   { value: "basic", title: "Основная информация", text: "День цикла, фаза, прогноз и общий календарь фаз." },
-  { value: "wellbeing", title: "Самочувствие", text: "Добавляет настроение, энергию, сон, боль и симптомы." },
-  { value: "detailed", title: "Подробный доступ", text: "Добавляет комментарии, историю циклов, отчёты и статистику." },
-  { value: "full", title: "Полный read-only доступ", text: "Показывает всю локальную информацию без права редактирования." },
-  { value: "custom", title: "Настраиваемый доступ", text: "Каждая категория включается отдельно." }
+  { value: "full", title: "Read-only (всё)", text: "Партнёр видит абсолютно всю информацию без права редактирования." }
 ];
 
 const defaultSupport: PartnerSupportPreferences = {
@@ -80,14 +67,7 @@ export function ProfilePage() {
     }
   }
 
-  function togglePermission(key: PartnerPermissionKey, checked: boolean) {
-    void updateSharing({
-      ...permissions,
-      [key]: checked,
-      accessLevel: "custom",
-      updatedAt: new Date().toISOString()
-    });
-  }
+
 
   function setAccessLevel(level: PartnerAccessLevel) {
     void updateSharing(applyPartnerAccessLevel(level, permissions));
@@ -279,7 +259,6 @@ export function ProfilePage() {
       {trackerMode ? (
         <PartnerAccessSettings
           permissions={permissions}
-          onToggle={togglePermission}
           onLevel={setAccessLevel}
           inviteCode={profile.partnerInviteCode}
           inviteConfirmed={profile.partnerInviteConfirmed ?? false}
@@ -308,7 +287,6 @@ export function ProfilePage() {
 
 function PartnerAccessSettings({
   permissions,
-  onToggle,
   onLevel,
   inviteCode,
   inviteConfirmed,
@@ -321,7 +299,6 @@ function PartnerAccessSettings({
   onDisconnect
 }: {
   permissions: PartnerSharingPreferences;
-  onToggle: (key: PartnerPermissionKey, checked: boolean) => void;
   onLevel: (level: PartnerAccessLevel) => void;
   inviteCode?: string;
   inviteConfirmed: boolean;
@@ -380,17 +357,17 @@ function PartnerAccessSettings({
         </div>
       </section>
 
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 grid-cols-2">
         {accessLevels.map((level) => (
           <button
             key={level.value}
             type="button"
             aria-pressed={permissions.accessLevel === level.value}
-            className={`rounded-card border p-4 text-left ${permissions.accessLevel === level.value ? "border-primary bg-primarySoft text-primary" : "border-border bg-card"}`}
+            className={`rounded-2xl border p-4 text-left transition-all ${permissions.accessLevel === level.value ? "border-primary bg-primarySoft text-primary shadow-sm" : "border-border bg-card"}`}
             onClick={() => onLevel(level.value)}
           >
-            <span className="block font-bold">{level.title}</span>
-            <span className="mt-2 block text-sm text-muted">{level.text}</span>
+            <span className="block font-bold text-sm">{level.title}</span>
+            <span className="mt-1 block text-xs text-muted">{level.text}</span>
           </button>
         ))}
       </div>
@@ -398,51 +375,16 @@ function PartnerAccessSettings({
       <div className="grid gap-3 md:grid-cols-2">
         <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-border p-3">
           <span>
-            <span className="flex items-center gap-2 font-semibold"><PauseCircle className="h-4 w-4 text-primary" />Приостановить доступ партнёра</span>
-            <span className="text-sm text-muted">Партнёр увидит только сообщение, что доступ временно приостановлен.</span>
+            <span className="flex items-center gap-2 font-semibold text-sm"><PauseCircle className="h-4 w-4 text-primary" />Приостановить доступ</span>
+            <span className="text-xs text-muted">Партнёр увидит только сообщение о паузе.</span>
           </span>
           <input type="checkbox" checked={permissions.accessPaused} onChange={(event) => onPause(event.target.checked)} className="h-5 w-5 accent-primary" />
         </label>
         <button type="button" className="rounded-2xl border border-coral/40 p-3 text-left hover:bg-coral/10" onClick={onDisconnect}>
-          <span className="flex items-center gap-2 font-semibold text-coral"><XCircle className="h-4 w-4" />Отключить партнёра</span>
-          <span className="mt-1 block text-sm text-muted">В локальном preview партнёр перестанет получать новые данные.</span>
+          <span className="flex items-center gap-2 font-semibold text-coral text-sm"><XCircle className="h-4 w-4" />Отключить партнёра</span>
+          <span className="mt-1 block text-xs text-muted">Партнёр перестанет видеть данные.</span>
         </button>
       </div>
-
-      <p className="flex gap-2 rounded-2xl border border-coral/40 bg-coral/10 p-3 text-sm text-muted">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-coral" />
-        Комментарии могут содержать личную информацию. Они будут показаны партнёру только после общего разрешения и отдельного открытия конкретной заметки. Интимные записи являются приватными и не передаются без отдельного явного разрешения.
-      </p>
-
-      {(Object.keys(sectionTitles) as Array<keyof typeof sectionTitles>).map((section) => {
-        const items = permissionMeta.filter((item) => item.section === section);
-        return (
-          <section key={section} className="space-y-3">
-            <h3 className="text-lg font-bold">{sectionTitles[section]}</h3>
-            <div className="grid gap-3 lg:grid-cols-2">
-              {items.map((item) => (
-                <label key={item.key} className="grid gap-3 rounded-2xl border border-border p-4 sm:grid-cols-[1fr_auto]">
-                  <span>
-                    <span className="block font-semibold">{item.title}</span>
-                    <span className="mt-1 block text-sm text-muted">{item.description}</span>
-                    <span className="mt-3 inline-flex rounded-full bg-primarySoft px-3 py-1 text-xs font-semibold text-muted">
-                      Чувствительность: {item.sensitivity}
-                    </span>
-                    <span className="mt-2 block rounded-xl bg-card/70 p-3 text-xs text-muted">У партнёра: {item.preview}</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={permissions[item.key]}
-                    onChange={(event) => onToggle(item.key, event.target.checked)}
-                    className="h-5 w-5 accent-primary"
-                    aria-label={item.title}
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
-        );
-      })}
           </div>
         )
       }]}
