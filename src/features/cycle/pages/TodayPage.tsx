@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { MessageCircle, Moon, ShieldCheck, Sun } from "lucide-react";
+import { MessageCircle, Moon, ShieldCheck, Sun, Wand2 } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
@@ -113,8 +113,24 @@ export function TodayPage() {
             {authUser ? "Облачная синхронизация" : ru.localOnly}
           </p>
         </div>
-        <Button aria-label="Переключить тему" size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => void setTheme(profile?.theme === "dark" ? "light" : "dark")}>
-          {profile?.theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        <Button
+          aria-label="Переключить тему"
+          size="icon"
+          variant="outline"
+          className="h-9 w-9 rounded-full"
+          title={`Тема: ${profile?.theme === "dark" ? "Тёмная" : profile?.theme === "light" ? "Светлая" : "Как на устройстве"}`}
+          onClick={() => {
+            const nextTheme = profile?.theme === "dark" ? "light" : profile?.theme === "light" ? "system" : "dark";
+            void setTheme(nextTheme);
+          }}
+        >
+          {profile?.theme === "dark" ? (
+            <Moon className="h-4 w-4 text-primary" />
+          ) : profile?.theme === "light" ? (
+            <Sun className="h-4 w-4 text-primary" />
+          ) : (
+            <Wand2 className="h-4 w-4 text-primary" />
+          )}
         </Button>
       </header>
 

@@ -14,14 +14,35 @@ export function StatsPage() {
     ? Math.round(completedCycleLengths.reduce((sum, length) => sum + length, 0) / completedCycleLengths.length)
     : undefined;
   const factualAveragePeriodLength = averagePeriodLength(cycles, profile?.averagePeriodLength ?? 5);
-  const chartData = dailyLogs.slice(-14).map((log) => ({
-    date: log.date.slice(5),
-    energy: log.energy ?? 0,
-    pain: log.pain ?? 0,
-    symptoms: log.symptoms.length
-  }));
-  const avgPain = dailyLogs.length ? (dailyLogs.reduce((sum, log) => sum + (log.pain ?? 0), 0) / dailyLogs.length).toFixed(1) : "0";
-  const avgEnergy = dailyLogs.length ? (dailyLogs.reduce((sum, log) => sum + (log.energy ?? 0), 0) / dailyLogs.length).toFixed(1) : "0";
+  const energyLevelToNum: Record<string, number> = {
+    "very-low": 2,
+    low: 4,
+    normal: 6,
+    high: 8,
+    "very-high": 10
+  };
+
+  const chartData = dailyLogs.slice(-14).map((log) => {
+    const energyNum = log.energy ?? (log.energyLevel ? energyLevelToNum[log.energyLevel] : 0);
+    return {
+      date: log.date.slice(5),
+      energy: energyNum,
+      pain: log.painLevel ?? log.pain ?? 0,
+      symptoms: log.symptoms.length
+    };
+  });
+
+  const avgPain = dailyLogs.length
+    ? (dailyLogs.reduce((sum, log) => sum + (log.painLevel ?? log.pain ?? 0), 0) / dailyLogs.length).toFixed(1)
+    : "0";
+  const avgEnergy = dailyLogs.length
+    ? (
+        dailyLogs.reduce((sum, log) => {
+          const val = log.energy ?? (log.energyLevel ? energyLevelToNum[log.energyLevel] : 0);
+          return sum + val;
+        }, 0) / dailyLogs.length
+      ).toFixed(1)
+    : "0";
 
   const bentoItems: BentoItem[] = [
     {

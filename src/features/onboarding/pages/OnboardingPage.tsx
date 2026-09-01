@@ -36,7 +36,7 @@ export function OnboardingPage() {
     const timer = window.setTimeout(() => {
       localStorage.setItem("lunapair-splash", "seen");
       setStage("welcome");
-    }, 2000);
+    }, 2800);
     return () => window.clearTimeout(timer);
   }, [stage]);
 
@@ -253,8 +253,8 @@ export function OnboardingPage() {
           {currentTrackerError && step === 1 ? <p className="text-sm text-coral">{currentTrackerError}</p> : null}
         </div>
       ) : null}
-      {step === 2 ? <Stepper value={cycleLength} min={15} max={60} setValue={(value) => { setCycleLength(value); clearValidation(); }} label="Дней в цикле" /> : null}
-      {step === 3 ? <Stepper value={periodLength} min={1} max={14} setValue={(value) => { setPeriodLength(value); clearValidation(); }} label="Дней месячных" /> : null}
+      {step === 2 ? <Stepper id="cycle-length-input" value={cycleLength} min={15} max={60} setValue={(value) => { setCycleLength(value); clearValidation(); }} label="Дней в цикле" /> : null}
+      {step === 3 ? <Stepper id="period-length-input" value={periodLength} min={1} max={14} setValue={(value) => { setPeriodLength(value); clearValidation(); }} label="Дней месячных" /> : null}
       {step === 4 ? <ThemeChoice theme={theme} setTheme={(value) => { setTheme(value); clearValidation(); }} /> : null}
       {step === 5 ? (
         <Card className="bg-primarySoft shadow-none">
@@ -318,13 +318,27 @@ function NameField({ name, setName }: { name: string; setName: (value: string) =
   );
 }
 
-function Stepper({ value, min, max, setValue, label }: { value: number; min: number; max: number; setValue: (value: number) => void; label: string }) {
+function Stepper({
+  id: inputId,
+  value,
+  min,
+  max,
+  setValue,
+  label
+}: {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  setValue: (value: number) => void;
+  label: string;
+}) {
   return (
     <div className="space-y-3">
-      <FieldLabel htmlFor={label}>{label}</FieldLabel>
+      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
       <div className="flex items-center gap-3">
         <Button variant="outline" size="icon" onClick={() => setValue(clamp(value - 1, min, max))}>−</Button>
-        <Input id={label} type="number" min={min} max={max} value={value} onChange={(event) => setValue(clamp(Number(event.target.value), min, max))} />
+        <Input id={inputId} type="number" min={min} max={max} value={value} onChange={(event) => setValue(clamp(Number(event.target.value), min, max))} />
         <Button variant="outline" size="icon" onClick={() => setValue(clamp(value + 1, min, max))}>+</Button>
       </div>
       <p className="text-sm text-muted">Допустимый диапазон: {min}–{max}.</p>

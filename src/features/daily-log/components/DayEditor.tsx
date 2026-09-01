@@ -113,6 +113,14 @@ export function DayEditor({ date, compact = false, onClose, onDateChange, onPrev
       return;
     }
     setError("");
+    const energyNumericMap: Record<string, number> = {
+      "very-low": 2,
+      low: 4,
+      normal: 6,
+      high: 8,
+      "very-high": 10
+    };
+
     await saveDailyLog({
       date,
       mood: mood || undefined,
@@ -123,6 +131,7 @@ export function DayEditor({ date, compact = false, onClose, onDateChange, onPrev
       customSymptom: symptoms.includes("другое") ? customSymptom.trim() : undefined,
       pain: painLevel,
       painLevel,
+      energy: energyLevel ? energyNumericMap[energyLevel] : undefined,
       energyLevel: energyLevel || undefined,
       sleepQuality: sleepHours >= 8 ? "good" : sleepHours >= 6 ? "normal" : "bad",
       sleepHours,
