@@ -13,6 +13,7 @@
   display: grid;
   gap: 1.25rem;
   width: 100%;
+  overflow: visible;
 }
 
 .magic-bento-card {
@@ -183,4 +184,5 @@
 .bento-section {
   position: relative;
   user-select: none;
+  overflow: visible;
 }

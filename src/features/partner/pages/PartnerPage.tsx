@@ -435,9 +435,9 @@ function PartnerCalendar({
             <span key={day} className={cn((day === "Сб" || day === "Вс") && "text-[hsl(var(--calendar-weekend-text))]")}>{day}</span>
           ))}
         </div>
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 overflow-visible p-1.5 -m-1.5">
           <MagicBento
-            gridClassName="mt-2 grid-cols-7 grid-rows-6 gap-1 sm:gap-2 flex-1 min-h-0"
+            gridClassName="mt-2 grid-cols-7 grid-rows-6 gap-1 sm:gap-2 flex-1 min-h-0 p-1.5 overflow-visible"
             enableTilt={true}
             enableMagnetism={true}
             glowColor={theme === "dark" ? "132, 0, 255" : "150, 100, 255"}
@@ -456,8 +456,8 @@ function PartnerCalendar({
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "border-border" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-50",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
-                  selected && "scale-[1.03] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm z-10",
+                  selected && "scale-[1.03] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-20"
                 ),
                 content: (
                   <button

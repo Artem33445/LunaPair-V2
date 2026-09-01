@@ -95,9 +95,9 @@ export function CalendarPage() {
         </div>
 
         {/* Desktop MagicBento Grid */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 overflow-visible p-1.5 -m-1.5">
           <MagicBento
-            gridClassName="grid-cols-7 grid-rows-6 gap-2 flex-1 min-h-0"
+            gridClassName="grid-cols-7 grid-rows-6 gap-2 flex-1 min-h-0 p-1.5 overflow-visible"
             enableTilt={true}
             enableMagnetism={true}
             glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"}
@@ -118,8 +118,8 @@ export function CalendarPage() {
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "border-border/60" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-35",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
-                  selected && "scale-[1.02] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-10"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm z-10",
+                  selected && "scale-[1.02] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-20"
                 ),
                 content: (
                   <button
@@ -240,8 +240,8 @@ export function CalendarPage() {
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "" : "text-[hsl(var(--calendar-outside-month-text))] opacity-35",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
-                  selected && "scale-[1.04] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-10"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm z-10",
+                  selected && "scale-[1.04] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-20"
                 )}
                 aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
               >
