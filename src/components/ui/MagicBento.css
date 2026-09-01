@@ -28,8 +28,10 @@
   backdrop-filter: blur(12px);
   font-weight: 300;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
   min-height: 180px;
+  transform: translateZ(0);
+  will-change: transform;
 
   --glow-x: 50%;
   --glow-y: 50%;
@@ -38,9 +40,18 @@
   --glow-color-rgb: 132, 0, 255;
 }
 
-.magic-bento-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+@media (hover: hover) and (pointer: fine) {
+  .magic-bento-card:hover {
+    transform: translateY(-2px) translateZ(0);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .magic-bento-card {
+    backdrop-filter: none;
+    background: hsl(var(--card));
+  }
 }
 
 .magic-bento-card__header,
