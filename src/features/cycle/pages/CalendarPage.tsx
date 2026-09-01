@@ -8,6 +8,7 @@ import { cn } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
 import { getCalendarDayInfo } from "../domain/cycleCalculations";
 import { DayEditor } from "../../daily-log/components/DayEditor";
+import { MagicBento } from "../../../components/ui/MagicBento";
 
 const phaseAccent = {
   menstrual: "bg-[hsl(var(--phase-menstrual)/0.7)]",
@@ -23,6 +24,7 @@ export function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
   const [legendOpen, setLegendOpen] = useState(false);
   const today = new Date();
+
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
     return Array.from({ length: 42 }, (_, index) => addDays(start, index));
@@ -35,36 +37,180 @@ export function CalendarPage() {
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-hidden">
-      <div className="flex-1 flex flex-col pb-2 pt-3">
-        {/* Month Header */}
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-2xl font-bold capitalize tracking-normal min-w-0 truncate">
-            {format(month, "LLLL yyyy", { locale: localeRu })}
-          </h2>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button aria-label="Предыдущий месяц" size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => setMonth(addMonths(month, -1))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" className="h-8 px-3 text-xs rounded-xl" onClick={goToday}>
-              Сегодня
-            </Button>
-            <Button aria-label="Следующий месяц" size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => setMonth(addMonths(month, 1))}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+      {/* ========================================================================= */}
+      {/* DESKTOP CALENDAR (>= md): Fullscreen MagicBento, Glowing Cards, 60fps      */}
+      {/* ========================================================================= */}
+      <div className="hidden md:flex flex-1 flex-col pb-2 pt-3 overflow-hidden">
+        {/* Desktop Header */}
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold capitalize tracking-tight">
+              {format(month, "LLLL yyyy", { locale: localeRu })}
+            </h2>
+            <div className="flex items-center gap-1">
+              <Button
+                aria-label="Предыдущий месяц"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setMonth(addMonths(month, -1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="h-8 px-3 text-xs rounded-xl font-medium" onClick={goToday}>
+                Сегодня
+              </Button>
+              <Button
+                aria-label="Следующий месяц"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full"
+                onClick={() => setMonth(addMonths(month, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-        </div>
 
-        {/* Sub-header with Legend button */}
-        <div className="flex items-center justify-end mb-1">
           <div className="relative">
-            <Button aria-expanded={legendOpen} variant="ghost" className="text-xs h-7 px-2 text-muted hover:text-text" onClick={() => setLegendOpen((open) => !open)}>
+            <Button
+              aria-expanded={legendOpen}
+              variant="ghost"
+              className="text-xs h-8 px-3 text-muted hover:text-text font-medium"
+              onClick={() => setLegendOpen((open) => !open)}
+            >
               Обозначения
             </Button>
             {legendOpen ? <Legend onClose={() => setLegendOpen(false)} /> : null}
           </div>
         </div>
 
-        {/* Day of week headers */}
+        {/* Desktop Days of Week */}
+        <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted mb-1 px-1">
+          {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => (
+            <span key={day} className={cn((day === "Сб" || day === "Вс") && "text-[hsl(var(--calendar-weekend-text))]")}>
+              {day}
+            </span>
+          ))}
+        </div>
+
+        {/* Desktop MagicBento Grid */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <MagicBento
+            gridClassName="grid-cols-7 grid-rows-6 gap-2 flex-1 min-h-0"
+            enableTilt={true}
+            enableMagnetism={true}
+            glowColor={profile?.theme === "dark" ? "132, 0, 255" : "150, 100, 255"}
+            items={days.map((day) => {
+              const date = format(day, "yyyy-MM-dd");
+              const info = getCalendarDayInfo(date, cycles, profile?.averageCycleLength, profile?.averagePeriodLength);
+              const log = dailyLogs.find((item) => item.date === date);
+              const hasPrivate = Boolean(log?.intimacy?.occurred && !profile?.hidePrivateMarkers);
+              const selected = selectedDate === date;
+              const todayDate = isSameDay(day, today);
+              const weekend = day.getDay() === 0 || day.getDay() === 6;
+              const isCurrentMonth = isSameMonth(day, month);
+
+              return {
+                id: date,
+                className: cn(
+                  "group relative isolate !min-h-0 !p-0 overflow-hidden rounded-2xl border transition-all duration-200 active:scale-[0.98] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
+                  "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
+                  weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
+                  isCurrentMonth ? "border-border/60" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-35",
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
+                  selected && "scale-[1.02] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))] z-10"
+                ),
+                content: (
+                  <button
+                    onClick={() => setSelectedDate(date)}
+                    className="absolute inset-0 flex h-full w-full items-center justify-center outline-none select-none cursor-pointer"
+                    aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
+                  >
+                    {isCurrentMonth ? (
+                      <>
+                        <span aria-hidden className={cn("absolute inset-x-3 top-1.5 h-0.5 rounded-full", phaseAccent[info.phase])} />
+                        {weekend ? <span aria-hidden className="absolute inset-x-3 top-3 h-px rounded-full bg-warning/45" /> : null}
+                        {info.isFertile ? <span aria-hidden className="absolute inset-x-2 bottom-2 h-1 rounded-full bg-[hsl(var(--phase-fertile)/0.35)]" /> : null}
+                        {info.isPredictedPeriod && !info.isActualPeriod ? (
+                          <span aria-hidden className="absolute inset-1.5 rounded-xl border border-dashed border-coral/70 bg-[hsl(var(--coral)/0.08)]" />
+                        ) : null}
+                        {info.isActualPeriod ? <span aria-hidden className="absolute inset-1.5 rounded-xl bg-coral/20 ring-1 ring-coral/35" /> : null}
+                        {info.isOvulation ? <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[hsl(var(--phase-ovulation))] shadow-[0_0_0_3px_hsl(var(--phase-ovulation)/0.2)]" /> : null}
+                      </>
+                    ) : null}
+
+                    <span className={cn("relative z-10 text-sm font-semibold", info.isActualPeriod && isCurrentMonth && "text-coral")}>
+                      {format(day, "d")}
+                    </span>
+
+                    {isCurrentMonth && todayDate ? <span aria-hidden className="absolute left-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-primary" /> : null}
+                    {isCurrentMonth && log ? <span className="absolute bottom-2 left-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-primary" title="Есть запись" /> : null}
+                    {isCurrentMonth && hasPrivate ? <Heart className="absolute right-2 top-5 z-10 h-3.5 w-3.5 text-coral" fill="currentColor" aria-label="Есть приватная запись" /> : null}
+                  </button>
+                )
+              };
+            })}
+          />
+        </div>
+
+        {/* Desktop Footer Disclaimer */}
+        <div className="mt-3 flex items-center justify-between text-xs text-muted/80 shrink-0">
+          <p>{ru.fertileWarning}</p>
+          <p>Все фазы и прогнозы рассчитываются приблизительно.</p>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MOBILE CALENDAR (< md): Native Compact Grid, Fullscreen Viewport, Fast     */}
+      {/* ========================================================================= */}
+      <div className="flex md:hidden flex-1 flex-col pb-2 pt-3">
+        {/* Mobile Header */}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-2xl font-bold capitalize tracking-normal min-w-0 truncate">
+            {format(month, "LLLL yyyy", { locale: localeRu })}
+          </h2>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              aria-label="Предыдущий месяц"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setMonth(addMonths(month, -1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" className="h-8 px-3 text-xs rounded-xl" onClick={goToday}>
+              Сегодня
+            </Button>
+            <Button
+              aria-label="Следующий месяц"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setMonth(addMonths(month, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Sub-header with Legend */}
+        <div className="flex items-center justify-end mb-1">
+          <div className="relative">
+            <Button
+              aria-expanded={legendOpen}
+              variant="ghost"
+              className="text-xs h-7 px-2 text-muted hover:text-text"
+              onClick={() => setLegendOpen((open) => !open)}
+            >
+              Обозначения
+            </Button>
+            {legendOpen ? <Legend onClose={() => setLegendOpen(false)} /> : null}
+          </div>
+        </div>
+
+        {/* Mobile Days of Week */}
         <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-semibold text-muted mb-1 px-1.5">
           {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day) => (
             <span key={day} className={cn((day === "Сб" || day === "Вс") && "text-[hsl(var(--calendar-weekend-text))]")}>
@@ -73,7 +219,7 @@ export function CalendarPage() {
           ))}
         </div>
 
-        {/* 42-day Calendar Grid */}
+        {/* Mobile 42-day Calendar Grid */}
         <div className="grid grid-cols-7 gap-1.5 sm:gap-2 p-1.5 overflow-visible">
           {days.map((day) => {
             const date = format(day, "yyyy-MM-dd");
@@ -124,7 +270,7 @@ export function CalendarPage() {
           })}
         </div>
 
-        {/* Selected / Current Day Summary Banner & Disclaimer */}
+        {/* Mobile Day Summary Banner */}
         <div className="mt-auto pt-3 shrink-0">
           {(() => {
             const activeDate = selectedDate || format(today, "yyyy-MM-dd");
@@ -160,7 +306,9 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Modal Bottom Sheet for Day Editing */}
+      {/* ========================================================================= */}
+      {/* MODAL BOTTOM SHEET / DESKTOP DIALOG FOR DAY EDITING                       */}
+      {/* ========================================================================= */}
       {selectedDate ? (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 md:items-center md:p-6"
