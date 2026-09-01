@@ -452,12 +452,12 @@ function PartnerCalendar({
               return {
                 id: day.date,
                 className: cn(
-                  "group relative isolate !min-h-0 !p-0 overflow-hidden rounded-xl border transition-all duration-200 active:scale-[0.95] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
+                  "group relative isolate !min-h-0 !p-0 rounded-xl border transition-all duration-200 active:scale-[0.95] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "border-border" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-50",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
-                  selected && "scale-[1.03] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
+                  selected && "scale-[1.03] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md"
                 ),
                 content: (
                   <button

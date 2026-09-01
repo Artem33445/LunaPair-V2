@@ -114,12 +114,12 @@ export function CalendarPage() {
               return {
                 id: date,
                 className: cn(
-                  "group relative isolate !min-h-0 !p-0 overflow-hidden rounded-2xl border transition-all duration-200 active:scale-[0.98] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
+                  "group relative isolate !min-h-0 !p-0 rounded-2xl border transition-all duration-200 active:scale-[0.98] hover:-translate-y-0.5 hover:border-[hsl(var(--calendar-hover-border))] hover:shadow-soft focus-within:ring-2 focus-within:ring-[hsl(var(--calendar-selected-ring))]",
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "border-border/60" : "border-transparent text-[hsl(var(--calendar-outside-month-text))] opacity-35",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
-                  selected && "scale-[1.02] border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))] z-10"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
+                  selected && "scale-[1.02] !border-[hsl(var(--calendar-selected-ring))] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-10"
                 ),
                 content: (
                   <button
@@ -240,8 +240,8 @@ export function CalendarPage() {
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
                   weekend && "bg-[hsl(var(--calendar-weekend-bg))] text-[hsl(var(--calendar-weekend-text))]",
                   isCurrentMonth ? "" : "text-[hsl(var(--calendar-outside-month-text))] opacity-35",
-                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] ring-offset-2 ring-offset-[hsl(var(--background))]",
-                  selected && "scale-[1.04] ring-2 ring-[hsl(var(--calendar-selected-ring))] ring-offset-2 ring-offset-[hsl(var(--background))] z-10"
+                  todayDate && "ring-2 ring-[hsl(var(--calendar-today-ring))] shadow-sm",
+                  selected && "scale-[1.04] ring-2 ring-[hsl(var(--calendar-selected-ring))] shadow-md z-10"
                 )}
                 aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
               >
