@@ -3,6 +3,7 @@ import { ru as localeRu } from "date-fns/locale";
 import { ArrowLeft, BarChart3, CalendarDays, ChevronLeft, ChevronRight, Eye, Heart, HeartHandshake, LockKeyhole, LogOut, ShieldCheck, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
@@ -499,9 +500,10 @@ function PartnerCalendar({
 }
 
 function DayDetails({ day, onClose }: { day: PartnerVisibleDay; onClose: () => void }) {
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end bg-text/35 backdrop-blur-sm md:items-center md:justify-center md:p-6"
+      className="fixed inset-0 z-[100] flex items-end bg-black/75 backdrop-blur-sm md:items-center md:justify-center md:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -538,7 +540,8 @@ function DayDetails({ day, onClose }: { day: PartnerVisibleDay; onClose: () => v
           Редактирование, удаление и изменение месячных в партнёрском режиме недоступны.
         </p>
       </Card>
-    </div>
+    </div>,
+    document.body
   );
 }
 

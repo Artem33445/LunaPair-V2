@@ -2,6 +2,7 @@ import { addDays, addMonths, format, isSameDay, isSameMonth, parseISO, startOfMo
 import { ru as localeRu } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";
 import { cn } from "../../../lib/utils";
@@ -309,22 +310,25 @@ export function CalendarPage() {
       {/* ========================================================================= */}
       {/* MODAL BOTTOM SHEET / DESKTOP DIALOG FOR DAY EDITING                       */}
       {/* ========================================================================= */}
-      {selectedDate ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 md:items-center md:p-6"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setSelectedDate(undefined);
-          }}
-        >
-          <div
-            className="w-full md:max-w-2xl max-h-[85dvh] flex flex-col overflow-hidden rounded-t-[28px] md:rounded-3xl shadow-2xl bg-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mt-2.5 h-1 w-12 rounded-full bg-border/80 md:hidden shrink-0" />
-            <DayEditor key={selectedDate} date={selectedDate} compact onClose={() => setSelectedDate(undefined)} />
-          </div>
-        </div>
-      ) : null}
+      {selectedDate && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 backdrop-blur-sm p-0 md:items-center md:p-6"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelectedDate(undefined);
+              }}
+            >
+              <div
+                className="w-full md:max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden rounded-t-[28px] md:rounded-3xl shadow-2xl bg-card border-t border-border/60 md:border md:border-border/60"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border/80 md:hidden shrink-0" />
+                <DayEditor key={selectedDate} date={selectedDate} compact onClose={() => setSelectedDate(undefined)} />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

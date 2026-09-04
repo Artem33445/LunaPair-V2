@@ -170,7 +170,7 @@ export function DayEditor({ date, compact = false, onClose, onDateChange, onPrev
       </AnimatePresence>
 
       {/* Header */}
-      <header className="flex items-center justify-between gap-2 px-1 pt-2 pb-2.5 border-b border-border/40 shrink-0">
+      <header className="flex items-center justify-between gap-2 px-3 pt-2 pb-2.5 border-b border-border/40 shrink-0">
         <div className="min-w-0 flex items-center gap-2">
           <div>
             <h2 className="text-base sm:text-lg font-bold tracking-tight">
@@ -208,7 +208,7 @@ export function DayEditor({ date, compact = false, onClose, onDateChange, onPrev
       </header>
 
       {/* Scrollable / Form Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-1 py-2.5 space-y-3 overscroll-contain">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-3 py-2.5 space-y-3 overscroll-contain">
         {/* 1. Месячные / Выделения */}
         <div className="space-y-1">
           <p className="text-[11px] font-semibold text-muted uppercase tracking-wider">Месячные (выделения)</p>
@@ -440,20 +440,25 @@ export function DayEditor({ date, compact = false, onClose, onDateChange, onPrev
       </div>
 
       {/* Action Buttons */}
-      <footer className="sticky bottom-0 z-20 flex items-center gap-2.5 pt-2 pb-1 px-0.5 bg-gradient-to-t from-background via-background/95 to-transparent shrink-0">
+      <footer
+        className={cn(
+          "sticky bottom-0 z-20 flex items-center gap-2.5 pt-3 px-3.5 border-t border-border/40 bg-card shrink-0",
+          compact ? "pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]" : "pb-2"
+        )}
+      >
         <Button
-          className="flex-1 min-h-12 text-sm font-bold rounded-2xl shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 text-white hover:brightness-105 active:scale-[0.98] transition-all"
+          className="flex-1 min-h-12 text-sm font-bold rounded-2xl shadow-lg shadow-primary/25 bg-gradient-to-r from-primary to-primary/90 text-white hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
           onClick={() => void save()}
         >
           {existing ? "Сохранить изменения" : "Сохранить день"}
         </Button>
         {existing && (
-          <Button variant="outline" className="min-h-12 px-4 text-xs rounded-2xl border-border/70 hover:bg-card" onClick={() => void clear()}>
+          <Button variant="outline" className="min-h-12 px-4 text-xs rounded-2xl border-border/70 hover:bg-card/80 cursor-pointer" onClick={() => void clear()}>
             Очистить
           </Button>
         )}
         {onClose && (
-          <Button variant="ghost" className="min-h-12 px-4 text-xs rounded-2xl hover:bg-card/60" onClick={close}>
+          <Button variant="ghost" className="min-h-12 px-4 text-xs rounded-2xl hover:bg-muted/10 cursor-pointer" onClick={close}>
             Отмена
           </Button>
         )}
