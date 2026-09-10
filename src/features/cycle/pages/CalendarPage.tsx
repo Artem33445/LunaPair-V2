@@ -1,15 +1,16 @@
-import { addDays, addMonths, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addMonths, differenceInCalendarDays, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";
 import { cn } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
-import { getCalendarDayInfo } from "../domain/cycleCalculations";
+import { getCalendarDayInfo, isDateInRange, pluralDays } from "../domain/cycleCalculations";
 import { DayEditor } from "../../daily-log/components/DayEditor";
 import { MagicBento } from "../../../components/ui/MagicBento";
+import type { CycleEntry } from "../../../types";
 
 const phaseAccent = {
   menstrual: "bg-[hsl(var(--phase-menstrual)/0.7)]",
@@ -20,11 +21,29 @@ const phaseAccent = {
 };
 
 export function CalendarPage() {
-  const { cycles, profile, dailyLogs } = useAppStore();
+  const { cycles, profile, dailyLogs, updatePeriodStartDate, endPeriod } = useAppStore();
   const [month, setMonth] = useState(startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
   const [legendOpen, setLegendOpen] = useState(false);
+  const [periodStartModalOpen, setPeriodStartModalOpen] = useState(false);
+  const [periodEndModalOpen, setPeriodEndModalOpen] = useState(false);
   const today = new Date();
+
+  const sortedCycles = useMemo(
+    () => [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    [cycles]
+  );
+  const latestCycle = sortedCycles.at(-1);
+
+  const relevantCycle = useMemo(() => {
+    if (selectedDate) {
+      const match = sortedCycles.find((c) =>
+        isDateInRange(selectedDate, c.startDate, c.endDate ?? addDays(parseISO(c.startDate), 14))
+      );
+      if (match) return match;
+    }
+    return latestCycle;
+  }, [sortedCycles, selectedDate, latestCycle]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
@@ -155,10 +174,34 @@ export function CalendarPage() {
           />
         </div>
 
-        {/* Desktop Footer Disclaimer */}
-        <div className="mt-3 flex items-center justify-between text-xs text-muted/80 shrink-0">
-          <p>{ru.fertileWarning}</p>
-          <p>Все фазы и прогнозы рассчитываются приблизительно.</p>
+        {/* Desktop Footer Actions & Disclaimer */}
+        <div className="mt-3 flex items-center justify-between gap-4 text-xs text-muted/80 shrink-0">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs font-semibold rounded-xl border-coral/40 bg-coral/10 text-coral hover:bg-coral/20 active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
+              onClick={() => setPeriodStartModalOpen(true)}
+            >
+              <CalendarClock className="h-3.5 w-3.5" />
+              Изменить дату начала месячных
+            </Button>
+            {relevantCycle && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs font-semibold rounded-xl border-primary/40 bg-primarySoft/60 text-primary hover:bg-primarySoft active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
+                onClick={() => setPeriodEndModalOpen(true)}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Месячные закончились
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-right">
+            <p>{ru.fertileWarning}</p>
+            <p className="hidden lg:block">Все фазы и прогнозы рассчитываются приблизительно.</p>
+          </div>
         </div>
       </div>
 
@@ -271,8 +314,28 @@ export function CalendarPage() {
           })}
         </div>
 
-        {/* Mobile Day Summary Banner */}
-        <div className="mt-auto pt-3 shrink-0">
+        {/* Mobile Day Summary Banner & Period Actions */}
+        <div className="mt-auto pt-2 shrink-0 space-y-2">
+          {/* Quick Period Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              variant="outline"
+              className="h-10 px-2 text-xs font-bold rounded-2xl border-coral/40 bg-coral/10 text-coral hover:bg-coral/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              onClick={() => setPeriodStartModalOpen(true)}
+            >
+              <CalendarClock className="h-4 w-4 shrink-0" />
+              <span className="truncate">Изменить дату начала</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 px-2 text-xs font-bold rounded-2xl border-primary/40 bg-primarySoft/60 text-primary hover:bg-primarySoft active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-sm"
+              onClick={() => setPeriodEndModalOpen(true)}
+            >
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">Месячные закончились</span>
+            </Button>
+          </div>
+
           {(() => {
             const activeDate = selectedDate || format(today, "yyyy-MM-dd");
             const activeInfo = getCalendarDayInfo(activeDate, cycles, profile?.averageCycleLength, profile?.averagePeriodLength);
@@ -303,12 +366,12 @@ export function CalendarPage() {
               </div>
             );
           })()}
-          <p className="mt-2 text-[10px] text-muted/70 text-center">Все фазы и прогнозы рассчитываются приблизительно.</p>
+          <p className="mt-1 text-[10px] text-muted/70 text-center">Все фазы и прогнозы рассчитываются приблизительно.</p>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* MODAL BOTTOM SHEET / DESKTOP DIALOG FOR DAY EDITING                       */}
+      {/* MODALS: DAY EDITING, CHANGE PERIOD START, AND END PERIOD EARLY           */}
       {/* ========================================================================= */}
       {selectedDate && typeof document !== "undefined"
         ? createPortal(
@@ -329,6 +392,35 @@ export function CalendarPage() {
             document.body
           )
         : null}
+
+      {periodStartModalOpen ? (
+        <PeriodStartModal
+          currentCycle={relevantCycle}
+          initialDate={selectedDate || relevantCycle?.startDate || format(today, "yyyy-MM-dd")}
+          periodLength={profile?.averagePeriodLength ?? 5}
+          onClose={() => setPeriodStartModalOpen(false)}
+          onSave={async (newDate) => {
+            await updatePeriodStartDate(newDate, relevantCycle?.id);
+          }}
+        />
+      ) : null}
+
+      {periodEndModalOpen && relevantCycle ? (
+        <PeriodEndModal
+          currentCycle={relevantCycle}
+          initialEndDate={
+            selectedDate && selectedDate >= relevantCycle.startDate
+              ? selectedDate
+              : format(today, "yyyy-MM-dd") >= relevantCycle.startDate
+                ? format(today, "yyyy-MM-dd")
+                : relevantCycle.endDate || relevantCycle.startDate
+          }
+          onClose={() => setPeriodEndModalOpen(false)}
+          onSave={async (newEndDate) => {
+            await endPeriod(newEndDate, relevantCycle.id);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -366,5 +458,304 @@ function Legend({ onClose }: { onClose: () => void }) {
         Фазы, прогноз месячных, овуляция и фертильное окно рассчитываются приблизительно на основании календарных данных.
       </p>
     </div>
+  );
+}
+
+function PeriodStartModal({
+  currentCycle,
+  initialDate,
+  periodLength,
+  onClose,
+  onSave
+}: {
+  currentCycle?: CycleEntry;
+  initialDate: string;
+  periodLength: number;
+  onClose: () => void;
+  onSave: (date: string) => Promise<void>;
+}) {
+  const [chosenDate, setChosenDate] = useState(initialDate);
+  const [saving, setSaving] = useState(false);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  const previewStartDate = parseISO(chosenDate);
+  const validDate = !Number.isNaN(previewStartDate.getTime());
+  const previewEndDate = validDate ? addDays(previewStartDate, periodLength - 1) : previewStartDate;
+
+  async function handleConfirm() {
+    if (!validDate) return;
+    setSaving(true);
+    try {
+      await onSave(chosenDate);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 backdrop-blur-sm p-0 md:items-center md:p-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="w-full md:max-w-lg flex flex-col overflow-hidden rounded-t-[28px] md:rounded-3xl shadow-2xl bg-card border-t border-border/60 md:border md:border-border/60"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border/80 md:hidden shrink-0" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-border/40">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-2xl bg-coral/15 flex items-center justify-center text-coral">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold">Дата начала месячных</h2>
+              <p className="text-xs text-muted">Перестройка цикла и подсветки</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4 text-sm overflow-y-auto max-h-[70dvh]">
+          {/* Current Info */}
+          {currentCycle && (
+            <div className="rounded-2xl border border-border/60 bg-primarySoft/30 p-3.5 space-y-1">
+              <p className="text-xs text-muted font-medium">Текущее начало цикла:</p>
+              <p className="font-semibold text-text">
+                {format(parseISO(currentCycle.startDate), "d MMMM yyyy", { locale: localeRu })}
+              </p>
+            </div>
+          )}
+
+          {/* Date Picker Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider block">
+              Новая дата первого дня месячных
+            </label>
+            <input
+              type="date"
+              value={chosenDate}
+              onChange={(e) => e.target.value && setChosenDate(e.target.value)}
+              className="w-full h-11 px-3.5 rounded-2xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {/* Quick shortcuts */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs rounded-xl"
+                onClick={() => setChosenDate(todayStr)}
+              >
+                Сегодня ({format(new Date(), "d MMM", { locale: localeRu })})
+              </Button>
+              {initialDate !== todayStr && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs rounded-xl"
+                  onClick={() => setChosenDate(initialDate)}
+                >
+                  Выбранный день ({format(parseISO(initialDate), "d MMM", { locale: localeRu })})
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Calculation Preview */}
+          {validDate && (
+            <div className="rounded-2xl border border-coral/30 bg-coral/10 p-3.5 space-y-2">
+              <div className="flex items-center gap-2 text-coral font-semibold text-xs">
+                <span className="h-2 w-2 rounded-full bg-coral animate-pulse" />
+                Что произойдет в календаре:
+              </div>
+              <p className="text-xs text-text/90 leading-relaxed">
+                Красным будут подсвечены <strong>{periodLength} {pluralDays(periodLength)}</strong> (из настроек при регистрации):
+              </p>
+              <p className="text-sm font-bold text-coral">
+                {format(previewStartDate, "d MMMM", { locale: localeRu })} — {format(previewEndDate, "d MMMM yyyy", { locale: localeRu })}
+              </p>
+              <p className="text-[11px] text-muted">
+                Все фазы, овуляция и прогнозы следующих циклов автоматически пересчитаются от новой даты.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 pt-3 border-t border-border/40 bg-card flex items-center gap-2.5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
+          <Button
+            className="flex-1 min-h-11 text-sm font-bold rounded-2xl shadow-lg shadow-coral/20 bg-gradient-to-r from-coral to-coral/90 text-white hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
+            disabled={!validDate || saving}
+            onClick={() => void handleConfirm()}
+          >
+            {saving ? "Сохранение..." : "Применить и перестроить цикл"}
+          </Button>
+          <Button variant="ghost" className="min-h-11 px-4 text-xs rounded-2xl cursor-pointer" onClick={onClose}>
+            Отмена
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function PeriodEndModal({
+  currentCycle,
+  initialEndDate,
+  onClose,
+  onSave
+}: {
+  currentCycle: CycleEntry;
+  initialEndDate: string;
+  onClose: () => void;
+  onSave: (date: string) => Promise<void>;
+}) {
+  const [chosenEndDate, setChosenEndDate] = useState(initialEndDate);
+  const [saving, setSaving] = useState(false);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  const startParsed = parseISO(currentCycle.startDate);
+  const endParsed = parseISO(chosenEndDate);
+  const valid = !Number.isNaN(endParsed.getTime()) && chosenEndDate >= currentCycle.startDate;
+  const actualLength = valid ? differenceInCalendarDays(endParsed, startParsed) + 1 : 1;
+
+  async function handleConfirm() {
+    if (!valid) return;
+    setSaving(true);
+    try {
+      await onSave(chosenEndDate);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 backdrop-blur-sm p-0 md:items-center md:p-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="w-full md:max-w-lg flex flex-col overflow-hidden rounded-t-[28px] md:rounded-3xl shadow-2xl bg-card border-t border-border/60 md:border md:border-border/60"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border/80 md:hidden shrink-0" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3 border-b border-border/40">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-2xl bg-primary/15 flex items-center justify-center text-primary">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold">Месячные закончились</h2>
+              <p className="text-xs text-muted">Завершение текущих месячных</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5 space-y-4 text-sm overflow-y-auto max-h-[70dvh]">
+          <div className="rounded-2xl border border-border/60 bg-primarySoft/30 p-3.5 space-y-1">
+            <p className="text-xs text-muted font-medium">Начало этих месячных:</p>
+            <p className="font-semibold text-text">
+              {format(startParsed, "d MMMM yyyy", { locale: localeRu })}
+            </p>
+            {currentCycle.endDate && (
+              <p className="text-xs text-muted pt-1">
+                Было запланировано до: {format(parseISO(currentCycle.endDate), "d MMMM yyyy", { locale: localeRu })}
+              </p>
+            )}
+          </div>
+
+          {/* End Date Picker */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider block">
+              Дата последнего дня месячных
+            </label>
+            <input
+              type="date"
+              min={currentCycle.startDate}
+              value={chosenEndDate}
+              onChange={(e) => e.target.value && setChosenEndDate(e.target.value)}
+              className="w-full h-11 px-3.5 rounded-2xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {/* Quick shortcuts */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs rounded-xl"
+                onClick={() => setChosenEndDate(todayStr >= currentCycle.startDate ? todayStr : currentCycle.startDate)}
+              >
+                Сегодня ({format(new Date(), "d MMM", { locale: localeRu })})
+              </Button>
+              {initialEndDate !== todayStr && initialEndDate >= currentCycle.startDate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs rounded-xl"
+                  onClick={() => setChosenEndDate(initialEndDate)}
+                >
+                  Выбранный день ({format(parseISO(initialEndDate), "d MMM", { locale: localeRu })})
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Explanation preview */}
+          {valid ? (
+            <div className="rounded-2xl border border-primary/30 bg-primarySoft/40 p-3.5 space-y-2">
+              <p className="text-xs text-text/90 leading-relaxed">
+                Фактическая длительность составит: <strong>{actualLength} {pluralDays(actualLength)}</strong>.
+              </p>
+              <p className="text-xs text-muted">
+                Красная подсветка после <strong>{format(endParsed, "d MMMM", { locale: localeRu })}</strong> будет сразу снята.
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-coral font-medium">
+              Дата окончания не может быть раньше даты начала ({format(startParsed, "d MMMM yyyy", { locale: localeRu })}).
+            </p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 pt-3 border-t border-border/40 bg-card flex items-center gap-2.5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
+          <Button
+            className="flex-1 min-h-11 text-sm font-bold rounded-2xl shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 text-white hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
+            disabled={!valid || saving}
+            onClick={() => void handleConfirm()}
+          >
+            {saving ? "Сохранение..." : "Завершить месячные"}
+          </Button>
+          <Button variant="ghost" className="min-h-11 px-4 text-xs rounded-2xl cursor-pointer" onClick={onClose}>
+            Отмена
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

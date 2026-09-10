@@ -36,7 +36,8 @@ export function TodayPage() {
       : `До предполагаемых месячных ${pluralDays(daysToPeriod)}`;
   const todayLog = dailyLogs.find((log) => log.date === todayIso());
   const latest = [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
-  const periodActive = latest && !latest.endDate;
+  const todayStr = todayIso();
+  const periodActive = Boolean(latest && (!latest.endDate || (todayStr >= latest.startDate && todayStr <= latest.endDate)));
   const name = profile?.name.trim();
 
   const bentoItems: BentoItem[] = [

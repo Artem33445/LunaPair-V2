@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { formatISO, subDays } from "date-fns";
 import type { AppProfile, CycleEntry, DailyLog, PersonalAdvicePackage, PredictionResult } from "../types";
 
 const mocks = vi.hoisted(() => {
@@ -90,7 +91,7 @@ const cycles: CycleEntry[] = [
 const dailyLogs: DailyLog[] = [
   {
     id: "log-1",
-    date: "2026-08-16",
+    date: formatISO(subDays(new Date(), 2), { representation: "date" }),
     mood: "tired",
     energyLevel: "low",
     painLevel: 3,

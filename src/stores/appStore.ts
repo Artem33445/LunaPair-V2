@@ -59,7 +59,8 @@ interface AppState {
   setSupportPreferences: (preferences: PartnerSupportPreferences) => Promise<void>;
   setHidePrivateMarkers: (hidden: boolean) => Promise<void>;
   startPeriod: (date?: string) => Promise<void>;
-  endPeriod: (date?: string) => Promise<void>;
+  endPeriod: (date?: string, cycleId?: string) => Promise<void>;
+  updatePeriodStartDate: (newStartDate: string, cycleId?: string) => Promise<void>;
   saveDailyLog: (log: DailyLogInput) => Promise<void>;
   deleteDailyLog: (id: string) => Promise<void>;
   deleteDailyLogByDate: (date: string) => Promise<void>;
@@ -574,11 +575,17 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
       }
+      const periodLength = get().profile?.averagePeriodLength ?? 5;
+      const cycleLength = get().profile?.averageCycleLength ?? 28;
+      const endDate = iso(addDays(parseISO(date), periodLength - 1));
       const cycles = deriveCycleLengths([
         ...get().cycles,
         {
           id: id("cycle"),
           startDate: date,
+          endDate,
+          periodLength,
+          cycleLength,
           source: "user",
           createdAt,
           updatedAt: createdAt
@@ -593,33 +600,89 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  endPeriod: async (date = todayIso()) => {
+  endPeriod: async (date = todayIso(), cycleId?: string) => {
     if (!canWriteAsTracker(get().profile)) {
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
     try {
-      const cycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
-      const latest = cycles.at(-1);
-      if (!latest) {
+      const allCycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      const targetCycle = cycleId
+        ? allCycles.find((c) => c.id === cycleId)
+        : allCycles.filter((c) => c.startDate <= date).at(-1) || allCycles.at(-1);
+
+      if (!targetCycle) {
         set({ toast: "Сначала отметь начало месячных" });
         return;
       }
-      if (date < latest.startDate) {
+      if (date < targetCycle.startDate) {
         set({ toast: "Дата окончания не может быть раньше начала" });
         return;
       }
-      const updated = {
-        ...latest,
+      const newPeriodLength = differenceInCalendarDays(parseISO(date), parseISO(targetCycle.startDate)) + 1;
+      const updated: CycleEntry = {
+        ...targetCycle,
         endDate: date,
-        periodLength: differenceInCalendarDays(parseISO(date), parseISO(latest.startDate)) + 1,
+        periodLength: newPeriodLength,
         updatedAt: now()
       };
-      const next = cycles.map((cycle) => (cycle.id === latest.id ? updated : cycle));
+      const next = allCycles.map((cycle) => (cycle.id === targetCycle.id ? updated : cycle));
       await getRepositories(get().authUser?.uid).cycles.upsert(updated);
       set({ cycles: next, toast: "Окончание месячных сохранено" });
     } catch (e: any) {
       console.error("Error ending period:", e);
+      set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
+    }
+  },
+
+  updatePeriodStartDate: async (newStartDate: string, cycleId?: string) => {
+    if (!canWriteAsTracker(get().profile)) {
+      set({ toast: "Партнёр не может изменять месячные" });
+      return;
+    }
+    try {
+      const allCycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      const targetCycle = cycleId
+        ? allCycles.find((c) => c.id === cycleId)
+        : allCycles.filter((c) => c.startDate <= newStartDate).at(-1) || allCycles.at(-1);
+
+      const periodLength = get().profile?.averagePeriodLength ?? 5;
+      const cycleLength = get().profile?.averageCycleLength ?? 28;
+      const newEndDate = iso(addDays(parseISO(newStartDate), periodLength - 1));
+      const timestamp = now();
+
+      let nextCycles: CycleEntry[];
+
+      if (!targetCycle) {
+        nextCycles = [
+          {
+            id: id("cycle"),
+            startDate: newStartDate,
+            endDate: newEndDate,
+            periodLength,
+            cycleLength,
+            source: "user",
+            createdAt: timestamp,
+            updatedAt: timestamp
+          }
+        ];
+      } else {
+        const updatedCycle: CycleEntry = {
+          ...targetCycle,
+          startDate: newStartDate,
+          endDate: newEndDate,
+          periodLength,
+          updatedAt: timestamp
+        };
+        nextCycles = allCycles.map((c) => (c.id === targetCycle.id ? updatedCycle : c));
+      }
+
+      nextCycles = deriveCycleLengths(nextCycles);
+      await getRepositories(get().authUser?.uid).cycles.clear();
+      await getRepositories(get().authUser?.uid).cycles.bulkPut(nextCycles);
+      set({ cycles: nextCycles, toast: "Дата начала месячных изменена" });
+    } catch (e: any) {
+      console.error("Error updating period start date:", e);
       set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
     }
   },
