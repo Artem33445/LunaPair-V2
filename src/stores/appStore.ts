@@ -554,46 +554,59 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      set({ toast: "Некорректная дата начала" });
+      return;
+    }
+    const parsedDate = parseISO(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      set({ toast: "Некорректная дата начала" });
+      return;
+    }
     try {
       const createdAt = now();
-      if (get().cycles.some((cycle) => cycle.startDate === date)) {
-        set({ toast: "Цикл на эту дату уже отмечен" });
-        return;
-      }
-      const previous = [...get().cycles].filter((cycle) => cycle.startDate < date).sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
-      if (previous) {
-        const gap = differenceInCalendarDays(parseISO(date), parseISO(previous.startDate));
-        if (gap > 0 && gap <= 14) {
-          const confirmed =
-            typeof window === "undefined" ||
-            window.confirm(
-              "Промежуток между началами месячных получился заметно короче предыдущих. Проверь дату. Если всё указано правильно, запись будет сохранена."
-            );
-          if (!confirmed) {
-            set({ toast: "Создание нового цикла отменено" });
-            return;
-          }
-        }
-      }
-      const periodLength = get().profile?.averagePeriodLength ?? 5;
-      const cycleLength = get().profile?.averageCycleLength ?? 28;
-      const endDate = iso(addDays(parseISO(date), periodLength - 1));
-      const cycles = deriveCycleLengths([
-        ...get().cycles,
-        {
-          id: id("cycle"),
+      const allCycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
+      
+      const periodLength = Math.max(1, get().profile?.averagePeriodLength ?? 5);
+      const cycleLength = Math.max(15, get().profile?.averageCycleLength ?? 28);
+      const endDate = iso(addDays(parsedDate, periodLength - 1));
+
+      // Check if there is an existing cycle within 21 days (same cycle window being adjusted)
+      const existingNear = allCycles.find((c) => {
+        const diff = Math.abs(differenceInCalendarDays(parseISO(c.startDate), parsedDate));
+        return diff <= 21;
+      });
+
+      let nextCycles: CycleEntry[];
+      if (existingNear) {
+        const updated: CycleEntry = {
+          ...existingNear,
           startDate: date,
           endDate,
           periodLength,
-          cycleLength,
-          source: "user",
-          createdAt,
           updatedAt: createdAt
-        }
-      ]);
+        };
+        nextCycles = allCycles.map((c) => (c.id === existingNear.id ? updated : c));
+      } else {
+        nextCycles = [
+          ...allCycles,
+          {
+            id: id("cycle"),
+            startDate: date,
+            endDate,
+            periodLength,
+            cycleLength,
+            source: "user",
+            createdAt,
+            updatedAt: createdAt
+          }
+        ];
+      }
+
+      nextCycles = deriveCycleLengths(nextCycles);
       await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
-      await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
-      set({ cycles, toast: "Начало месячных сохранено" });
+      await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(nextCycles);
+      set({ cycles: nextCycles, toast: "Начало месячных сохранено" });
     } catch (e: any) {
       console.error("Error starting period:", e);
       set({ toast: "Ошибка при сохранении: " + (e?.message || "не удалось сохранить") });
@@ -605,6 +618,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      set({ toast: "Некорректная дата окончания" });
+      return;
+    }
+    const parsedEnd = parseISO(date);
+    if (Number.isNaN(parsedEnd.getTime())) {
+      set({ toast: "Некорректная дата окончания" });
+      return;
+    }
+
     try {
       const allCycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
       const targetCycle = cycleId
@@ -619,7 +642,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ toast: "Дата окончания не может быть раньше начала" });
         return;
       }
-      const newPeriodLength = differenceInCalendarDays(parseISO(date), parseISO(targetCycle.startDate)) + 1;
+      const newPeriodLength = differenceInCalendarDays(parsedEnd, parseISO(targetCycle.startDate)) + 1;
       const updated: CycleEntry = {
         ...targetCycle,
         endDate: date,
@@ -640,44 +663,53 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ toast: "Партнёр не может изменять месячные" });
       return;
     }
+    if (!newStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(newStartDate)) {
+      set({ toast: "Некорректный формат даты" });
+      return;
+    }
+    const parsedStart = parseISO(newStartDate);
+    if (Number.isNaN(parsedStart.getTime())) {
+      set({ toast: "Некорректная дата" });
+      return;
+    }
+
     try {
       const allCycles = [...get().cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
       const targetCycle = cycleId
         ? allCycles.find((c) => c.id === cycleId)
-        : allCycles.filter((c) => c.startDate <= newStartDate).at(-1) || allCycles.at(-1);
+        : allCycles.find((c) => {
+            const diff = Math.abs(differenceInCalendarDays(parseISO(c.startDate), parsedStart));
+            return diff <= 21;
+          }) || allCycles.at(-1);
 
-      const periodLength = get().profile?.averagePeriodLength ?? 5;
-      const cycleLength = get().profile?.averageCycleLength ?? 28;
-      const newEndDate = iso(addDays(parseISO(newStartDate), periodLength - 1));
+      const periodLength = Math.max(1, get().profile?.averagePeriodLength ?? 5);
+      const cycleLength = Math.max(15, get().profile?.averageCycleLength ?? 28);
+      const newEndDate = iso(addDays(parsedStart, periodLength - 1));
       const timestamp = now();
 
-      let nextCycles: CycleEntry[];
+      const targetId = targetCycle?.id ?? id("cycle");
+      const updatedCycle: CycleEntry = {
+        id: targetId,
+        startDate: newStartDate,
+        endDate: newEndDate,
+        periodLength,
+        cycleLength: targetCycle?.cycleLength ?? cycleLength,
+        source: "user",
+        createdAt: targetCycle?.createdAt ?? timestamp,
+        updatedAt: timestamp
+      };
 
-      if (!targetCycle) {
-        nextCycles = [
-          {
-            id: id("cycle"),
-            startDate: newStartDate,
-            endDate: newEndDate,
-            periodLength,
-            cycleLength,
-            source: "user",
-            createdAt: timestamp,
-            updatedAt: timestamp
-          }
-        ];
-      } else {
-        const updatedCycle: CycleEntry = {
-          ...targetCycle,
-          startDate: newStartDate,
-          endDate: newEndDate,
-          periodLength,
-          updatedAt: timestamp
-        };
-        nextCycles = allCycles.map((c) => (c.id === targetCycle.id ? updatedCycle : c));
-      }
+      // Filter out:
+      // 1. The cycle being updated (replaced by updatedCycle)
+      // 2. Any conflicting / ghost cycle within 21 days of newStartDate (e.g. from registration or previous test clicks)
+      const remainingCycles = allCycles.filter((c) => {
+        if (c.id === targetId) return false;
+        const diff = Math.abs(differenceInCalendarDays(parseISO(c.startDate), parsedStart));
+        if (diff <= 21) return false;
+        return true;
+      });
 
-      nextCycles = deriveCycleLengths(nextCycles);
+      const nextCycles = deriveCycleLengths([...remainingCycles, updatedCycle]);
       await getRepositories(get().authUser?.uid).cycles.clear();
       await getRepositories(get().authUser?.uid).cycles.bulkPut(nextCycles);
       set({ cycles: nextCycles, toast: "Дата начала месячных изменена" });

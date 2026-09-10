@@ -1,7 +1,7 @@
-import { addDays, addMonths, differenceInCalendarDays, format, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addMonths, differenceInCalendarDays, format, formatISO, isSameDay, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
 import { CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Heart, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";
@@ -24,6 +24,7 @@ export function CalendarPage() {
   const { cycles, profile, dailyLogs, updatePeriodStartDate, endPeriod } = useAppStore();
   const [month, setMonth] = useState(startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
+  const [lastInteractedDate, setLastInteractedDate] = useState<string | undefined>();
   const [legendOpen, setLegendOpen] = useState(false);
   const [periodStartModalOpen, setPeriodStartModalOpen] = useState(false);
   const [periodEndModalOpen, setPeriodEndModalOpen] = useState(false);
@@ -36,14 +37,33 @@ export function CalendarPage() {
   const latestCycle = sortedCycles.at(-1);
 
   const relevantCycle = useMemo(() => {
-    if (selectedDate) {
-      const match = sortedCycles.find((c) =>
-        isDateInRange(selectedDate, c.startDate, c.endDate ?? addDays(parseISO(c.startDate), 14))
-      );
+    const checkDate = lastInteractedDate || selectedDate;
+    if (checkDate) {
+      const match = sortedCycles.find((c) => {
+        const start = c.startDate;
+        const end = c.endDate ?? formatISO(addDays(parseISO(c.startDate), 21), { representation: "date" });
+        return isDateInRange(checkDate, start, end);
+      });
       if (match) return match;
     }
     return latestCycle;
-  }, [sortedCycles, selectedDate, latestCycle]);
+  }, [sortedCycles, lastInteractedDate, selectedDate, latestCycle]);
+
+  const initialEndDate = useMemo(() => {
+    if (!relevantCycle) return format(today, "yyyy-MM-dd");
+    const todayStr = format(today, "yyyy-MM-dd");
+    // Prioritize the date the user entered or clicked last, provided it's >= cycle.startDate
+    if (lastInteractedDate && lastInteractedDate >= relevantCycle.startDate) {
+      return lastInteractedDate;
+    }
+    if (selectedDate && selectedDate >= relevantCycle.startDate) {
+      return selectedDate;
+    }
+    if (todayStr >= relevantCycle.startDate) {
+      return todayStr;
+    }
+    return relevantCycle.endDate || relevantCycle.startDate;
+  }, [relevantCycle, lastInteractedDate, selectedDate, today]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
@@ -51,8 +71,10 @@ export function CalendarPage() {
   }, [month]);
 
   function goToday() {
+    const todayStr = format(today, "yyyy-MM-dd");
     setMonth(startOfMonth(today));
-    setSelectedDate(format(today, "yyyy-MM-dd"));
+    setSelectedDate(todayStr);
+    setLastInteractedDate(todayStr);
   }
 
   return (
@@ -143,7 +165,10 @@ export function CalendarPage() {
                 ),
                 content: (
                   <button
-                    onClick={() => setSelectedDate(date)}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setLastInteractedDate(date);
+                    }}
                     className="absolute inset-0 flex h-full w-full items-center justify-center outline-none select-none cursor-pointer"
                     aria-label={`${format(day, "d MMMM", { locale: localeRu })}, ${weekend ? "выходной день, " : ""}${todayDate ? "сегодня, " : ""}${selected ? "выбранный день, " : ""}${ru.phase[info.phase]}`}
                   >
@@ -278,7 +303,10 @@ export function CalendarPage() {
             return (
               <button
                 key={date}
-                onClick={() => setSelectedDate(date)}
+                onClick={() => {
+                  setSelectedDate(date);
+                  setLastInteractedDate(date);
+                }}
                 className={cn(
                   "group relative isolate aspect-square w-full rounded-2xl transition-all duration-150 active:scale-95 flex items-center justify-center select-none outline-none",
                   "bg-[hsl(var(--calendar-day-bg))] text-[hsl(var(--calendar-day-text))]",
@@ -396,11 +424,14 @@ export function CalendarPage() {
       {periodStartModalOpen ? (
         <PeriodStartModal
           currentCycle={relevantCycle}
-          initialDate={selectedDate || relevantCycle?.startDate || format(today, "yyyy-MM-dd")}
+          initialDate={lastInteractedDate || selectedDate || relevantCycle?.startDate || format(today, "yyyy-MM-dd")}
           periodLength={profile?.averagePeriodLength ?? 5}
           onClose={() => setPeriodStartModalOpen(false)}
           onSave={async (newDate) => {
             await updatePeriodStartDate(newDate, relevantCycle?.id);
+            setLastInteractedDate(newDate);
+            setSelectedDate(newDate);
+            setMonth(startOfMonth(parseISO(newDate)));
           }}
         />
       ) : null}
@@ -408,16 +439,13 @@ export function CalendarPage() {
       {periodEndModalOpen && relevantCycle ? (
         <PeriodEndModal
           currentCycle={relevantCycle}
-          initialEndDate={
-            selectedDate && selectedDate >= relevantCycle.startDate
-              ? selectedDate
-              : format(today, "yyyy-MM-dd") >= relevantCycle.startDate
-                ? format(today, "yyyy-MM-dd")
-                : relevantCycle.endDate || relevantCycle.startDate
-          }
+          initialEndDate={initialEndDate}
+          lastInteractedDate={lastInteractedDate}
           onClose={() => setPeriodEndModalOpen(false)}
           onSave={async (newEndDate) => {
             await endPeriod(newEndDate, relevantCycle.id);
+            setLastInteractedDate(newEndDate);
+            setSelectedDate(newEndDate);
           }}
         />
       ) : null}
@@ -477,6 +505,10 @@ function PeriodStartModal({
   const [chosenDate, setChosenDate] = useState(initialDate);
   const [saving, setSaving] = useState(false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    setChosenDate(initialDate);
+  }, [initialDate]);
 
   const previewStartDate = parseISO(chosenDate);
   const validDate = !Number.isNaN(previewStartDate.getTime());
@@ -614,17 +646,23 @@ function PeriodStartModal({
 function PeriodEndModal({
   currentCycle,
   initialEndDate,
+  lastInteractedDate,
   onClose,
   onSave
 }: {
   currentCycle: CycleEntry;
   initialEndDate: string;
+  lastInteractedDate?: string;
   onClose: () => void;
   onSave: (date: string) => Promise<void>;
 }) {
   const [chosenEndDate, setChosenEndDate] = useState(initialEndDate);
   const [saving, setSaving] = useState(false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
+
+  useEffect(() => {
+    setChosenEndDate(initialEndDate);
+  }, [initialEndDate]);
 
   const startParsed = parseISO(currentCycle.startDate);
   const endParsed = parseISO(chosenEndDate);
@@ -710,15 +748,26 @@ function PeriodEndModal({
               >
                 Сегодня ({format(new Date(), "d MMM", { locale: localeRu })})
               </Button>
-              {initialEndDate !== todayStr && initialEndDate >= currentCycle.startDate && (
+              {lastInteractedDate && lastInteractedDate >= currentCycle.startDate && lastInteractedDate !== todayStr && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs rounded-xl border-primary/40 text-primary font-medium"
+                  onClick={() => setChosenEndDate(lastInteractedDate)}
+                >
+                  Выбранный день ({format(parseISO(lastInteractedDate), "d MMM", { locale: localeRu })})
+                </Button>
+              )}
+              {currentCycle.endDate && currentCycle.endDate >= currentCycle.startDate && currentCycle.endDate !== chosenEndDate && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="h-7 px-2.5 text-xs rounded-xl"
-                  onClick={() => setChosenEndDate(initialEndDate)}
+                  onClick={() => setChosenEndDate(currentCycle.endDate!)}
                 >
-                  Выбранный день ({format(parseISO(initialEndDate), "d MMM", { locale: localeRu })})
+                  По плану ({format(parseISO(currentCycle.endDate), "d MMM", { locale: localeRu })})
                 </Button>
               )}
             </div>

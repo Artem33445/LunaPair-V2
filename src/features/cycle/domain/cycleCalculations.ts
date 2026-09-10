@@ -153,13 +153,17 @@ export function getCalendarDayInfo(
   const isFertile = projections.some((projection) =>
     isDateInRange(date, projection.fertileWindowStart, projection.fertileWindowEnd)
   );
+  const effectivePeriodLength =
+    latest?.endDate && date >= latest.startDate
+      ? Math.max(1, differenceInCalendarDaysSafe(latest.endDate, latest.startDate) + 1)
+      : fallbackPeriodLength;
   const phase = isOvulation
     ? "ovulation"
     : isFertile
       ? "fertile"
       : isPredictedPeriod
         ? "menstrual"
-      : getCurrentPhase(Math.max(1, cycleDay), prediction.estimatedCycleLength, fallbackPeriodLength);
+      : getCurrentPhase(Math.max(1, cycleDay), prediction.estimatedCycleLength, effectivePeriodLength);
 
   return {
     date,
