@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { getCalendarDayInfo, predictCycle } from "./cycleCalculations";
 import { useAppStore } from "../../../stores/appStore";
 import type { AppProfile, CycleEntry } from "../../../types";
+import { defaultSharing } from "./demoData";
 
 describe("Chaotic User Actions Simulation (Period Management & Error Handling)", () => {
   beforeEach(async () => {
@@ -14,14 +15,7 @@ describe("Chaotic User Actions Simulation (Period Management & Error Handling)",
       averagePeriodLength: 5,
       theme: "light",
       onboardingCompleted: true,
-      partnerSharing: {
-        shareCurrentCycleDay: true,
-        shareCurrentPhase: true,
-        sharePredictedPeriod: true,
-        sharePredictionRange: true,
-        shareCalendar: true,
-        shareConfirmedPeriodDays: true
-      },
+      partnerSharing: defaultSharing,
       hidePrivateMarkers: false,
       createdAt: "2026-08-01T00:00:00.000Z",
       updatedAt: "2026-08-01T00:00:00.000Z"
@@ -212,4 +206,69 @@ describe("Chaotic User Actions Simulation (Period Management & Error Handling)",
     expect(info.isActualPeriod).toBe(false);
     expect(info.isPredictedPeriod).toBeDefined();
   });
+
+  it("reproduces user issue: period started on 6th, ended on 9th -> circle and calendar must be synchronized", async () => {
+    const store = useAppStore.getState();
+
+    // 1. User sets start date to 6th (2026-09-06)
+    await store.updatePeriodStartDate("2026-09-06");
+    let cycles = useAppStore.getState().cycles;
+
+    // 2. User marks that period ended on 9th (2026-09-09)
+    await store.endPeriod("2026-09-09", cycles[0].id);
+    cycles = useAppStore.getState().cycles;
+
+    // 3. Calendar info for today (2026-09-10)
+    const calToday = getCalendarDayInfo("2026-09-10", cycles, 28, 5);
+    expect(calToday.cycleDay).toBe(5);
+    expect(calToday.phase).toBe("follicular");
+    expect(calToday.isActualPeriod).toBe(false);
+
+    // 4. Circle prediction for today (2026-09-10) - MUST BE SYNCHRONIZED
+    const predictionToday = predictCycle(cycles, new Date("2026-09-10T12:00:00"), 28, 5);
+    expect(predictionToday.cycleDay).toBe(5);
+    expect(predictionToday.currentPhase).toBe("follicular");
+
+    // 5. Verify every single day from start of period through post-period
+    const d6 = getCalendarDayInfo("2026-09-06", cycles, 28, 5);
+    expect(d6.cycleDay).toBe(1);
+    expect(d6.phase).toBe("menstrual");
+    expect(d6.isActualPeriod).toBe(true);
+
+    const d7 = getCalendarDayInfo("2026-09-07", cycles, 28, 5);
+    expect(d7.cycleDay).toBe(2);
+    expect(d7.phase).toBe("menstrual");
+    expect(d7.isActualPeriod).toBe(true);
+
+    const d8 = getCalendarDayInfo("2026-09-08", cycles, 28, 5);
+    expect(d8.cycleDay).toBe(3);
+    expect(d8.phase).toBe("menstrual");
+    expect(d8.isActualPeriod).toBe(true);
+
+    const d9 = getCalendarDayInfo("2026-09-09", cycles, 28, 5);
+    expect(d9.cycleDay).toBe(4);
+    expect(d9.phase).toBe("menstrual");
+    expect(d9.isActualPeriod).toBe(true);
+
+    const d10 = getCalendarDayInfo("2026-09-10", cycles, 28, 5);
+    expect(d10.cycleDay).toBe(5);
+    expect(d10.phase).toBe("follicular");
+    expect(d10.isActualPeriod).toBe(false);
+
+    // 6. Predict cycle on past day (Sept 6) evaluates to day 1 menstrual
+    const pred6 = predictCycle(cycles, new Date("2026-09-06T12:00:00"), 28, 5);
+    expect(pred6.cycleDay).toBe(1);
+    expect(pred6.currentPhase).toBe("menstrual");
+
+    // 7. Predict cycle on Sept 9 evaluates to day 4 menstrual
+    const pred9 = predictCycle(cycles, new Date("2026-09-09T12:00:00"), 28, 5);
+    expect(pred9.cycleDay).toBe(4);
+    expect(pred9.currentPhase).toBe("menstrual");
+
+    // 8. Predict cycle on Sept 10 evaluates to day 5 follicular
+    const pred10 = predictCycle(cycles, new Date("2026-09-10T12:00:00"), 28, 5);
+    expect(pred10.cycleDay).toBe(5);
+    expect(pred10.currentPhase).toBe("follicular");
+  });
 });
+

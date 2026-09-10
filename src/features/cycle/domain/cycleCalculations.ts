@@ -5,7 +5,7 @@ import {
 } from "date-fns";
 import type { CycleEntry, CyclePhase, PredictionResult } from "../../../types";
 import { calculateCyclePrediction } from "./cyclePredictionService";
-import { differenceInCalendarDaysSafe } from "./dateUtils";
+import { differenceInCalendarDaysSafe, formatLocalDate } from "./dateUtils";
 
 export function sortCycles(cycles: CycleEntry[]) {
   return [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate));
@@ -91,14 +91,30 @@ export function predictCycle(
     fallbackPeriodLength,
     generatedAt: atDate
   });
-  const latest = valid.filter((cycle) => !isAfter(parseISO(cycle.startDate), atDate)).at(-1);
+  const todayStr = formatLocalDate(atDate);
+  const candidateCycles = valid.length > 0 ? valid : sortCycles(cycles);
+  const latest =
+    candidateCycles.filter((cycle) => cycle.startDate <= todayStr).at(-1) ||
+    candidateCycles.at(-1);
   const avgPeriod = averagePeriodLength(valid, fallbackPeriodLength);
-  const currentDay = latest ? differenceInCalendarDays(atDate, parseISO(latest.startDate)) + 1 : 1;
+  const currentDay = latest ? differenceInCalendarDaysSafe(todayStr, latest.startDate) + 1 : 1;
   const irregular = detectIrregularity(valid);
+
+  const effectivePeriodLength =
+    latest?.endDate && todayStr >= latest.startDate
+      ? Math.max(1, differenceInCalendarDaysSafe(latest.endDate, latest.startDate) + 1)
+      : avgPeriod;
+
+  let currentPhase = getCurrentPhase(Math.max(1, currentDay), prediction.estimatedCycleLength, effectivePeriodLength);
+
+  // If the period has explicitly ended and today is strictly past the end date, the phase cannot be menstrual
+  if (latest?.endDate && todayStr > latest.endDate && currentPhase === "menstrual") {
+    currentPhase = "follicular";
+  }
 
   return {
     cycleDay: Math.max(1, currentDay),
-    currentPhase: getCurrentPhase(Math.max(1, currentDay), prediction.estimatedCycleLength, avgPeriod),
+    currentPhase,
     predictedNextPeriodStart: prediction.predictedNextPeriodStart,
     predictedPeriodEnd: prediction.predictedNextPeriodEnd,
     uncertaintyStart: prediction.uncertaintyStart,
@@ -107,7 +123,7 @@ export function predictCycle(
     fertileWindowStart: prediction.fertileWindowStart ?? prediction.predictedNextPeriodStart,
     fertileWindowEnd: prediction.fertileWindowEnd ?? prediction.predictedNextPeriodStart,
     averageCycleLength: prediction.estimatedCycleLength,
-    averagePeriodLength: avgPeriod,
+    averagePeriodLength: effectivePeriodLength,
     irregularityDetected: irregular,
     dataConfidence: prediction.confidence,
     pendingExpectation: prediction.pendingExpectation,
@@ -139,9 +155,11 @@ export function getCalendarDayInfo(
 ): CalendarDayInfo {
   const prediction = calculateCyclePrediction({ cycles, fallbackCycleLength, fallbackPeriodLength, generatedAt });
   const projections = prediction.futureProjections;
-  const latest = filterValidCycles(cycles)
+  const valid = filterValidCycles(cycles);
+  const candidateCycles = valid.length > 0 ? valid : sortCycles(cycles);
+  const latest = candidateCycles
     .filter((cycle) => cycle.startDate <= date)
-    .at(-1);
+    .at(-1) || candidateCycles.at(-1);
   const cycleDay = latest ? differenceInCalendarDaysSafe(date, latest.startDate) + 1 : 1;
   const isActualPeriod = cycles.some((cycle) =>
     isDateInRange(date, cycle.startDate, cycle.endDate ?? cycle.startDate)
@@ -157,13 +175,19 @@ export function getCalendarDayInfo(
     latest?.endDate && date >= latest.startDate
       ? Math.max(1, differenceInCalendarDaysSafe(latest.endDate, latest.startDate) + 1)
       : fallbackPeriodLength;
-  const phase = isOvulation
+  let phase = isOvulation
     ? "ovulation"
     : isFertile
       ? "fertile"
+      : isActualPeriod
+        ? "menstrual"
       : isPredictedPeriod
         ? "menstrual"
       : getCurrentPhase(Math.max(1, cycleDay), prediction.estimatedCycleLength, effectivePeriodLength);
+
+  if (latest?.endDate && date > latest.endDate && phase === "menstrual" && !isActualPeriod && !isPredictedPeriod) {
+    phase = "follicular";
+  }
 
   return {
     date,

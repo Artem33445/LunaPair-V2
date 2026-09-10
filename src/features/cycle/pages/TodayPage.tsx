@@ -1,7 +1,7 @@
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO } from "date-fns";
 import { ru as localeRu } from "date-fns/locale";
-import { MessageCircle, Moon, ShieldCheck, Sun, Wand2 } from "lucide-react";
-import { useMemo } from "react";
+import { ChevronLeft, ChevronRight, MessageCircle, Moon, ShieldCheck, Sun, Wand2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/button";
 import { ru } from "../../../i18n/ru";
@@ -9,9 +9,9 @@ import { todayIso } from "../../../lib/utils";
 import { useAppStore } from "../../../stores/appStore";
 import { CycleRing } from "../components/CycleRing";
 import { dailyAdvice, daysUntil, phaseHint, pluralDays, predictCycle } from "../domain/cycleCalculations";
+import { formatLocalDate, parseLocalDate } from "../domain/dateUtils";
 import { personalInsight } from "../domain/cycleReports";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
-import { DailyInsightWidget } from "../../assistant/components/DailyInsightWidget";
 
 const phaseLegendItems = [
   { key: "menstrual", label: "Месячные" },
@@ -24,21 +24,29 @@ const phaseLegendItems = [
 export function TodayPage() {
   const { authUser, profile, cycles, dailyLogs, startPeriod, endPeriod, setTheme } = useAppStore();
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState<string>(todayIso());
+  const isViewingToday = selectedDate === todayIso();
+  const targetDate = useMemo(() => parseLocalDate(selectedDate), [selectedDate]);
+
   const prediction = useMemo(
-    () => predictCycle(cycles, new Date(), profile?.averageCycleLength, profile?.averagePeriodLength),
-    [cycles, profile?.averageCycleLength, profile?.averagePeriodLength]
+    () => predictCycle(cycles, targetDate, profile?.averageCycleLength, profile?.averagePeriodLength),
+    [cycles, targetDate, profile?.averageCycleLength, profile?.averagePeriodLength]
   );
-  const daysToPeriod = daysUntil(prediction.predictedNextPeriodStart);
+  const daysToPeriod = daysUntil(prediction.predictedNextPeriodStart, targetDate);
   const daysDelayed = prediction.pendingExpectation?.daysDelayed ?? 0;
   const periodStatusText =
     daysDelayed > 0
       ? `Ожидаемое начало сдвинуто на ${pluralDays(daysDelayed)}, пока начало месячных не подтверждено`
       : `До предполагаемых месячных ${pluralDays(daysToPeriod)}`;
-  const todayLog = dailyLogs.find((log) => log.date === todayIso());
+  const todayLog = dailyLogs.find((log) => log.date === selectedDate);
   const latest = [...cycles].sort((a, b) => a.startDate.localeCompare(b.startDate)).at(-1);
-  const todayStr = todayIso();
-  const periodActive = Boolean(latest && (!latest.endDate || (todayStr >= latest.startDate && todayStr <= latest.endDate)));
+  const periodActive = Boolean(latest && (!latest.endDate || (selectedDate >= latest.startDate && selectedDate <= latest.endDate)));
   const name = profile?.name.trim();
+
+  function shiftSelectedDate(deltaDays: number) {
+    const nextDate = addDays(parseLocalDate(selectedDate), deltaDays);
+    setSelectedDate(formatLocalDate(nextDate));
+  }
 
   const bentoItems: BentoItem[] = [
     {
@@ -136,6 +144,42 @@ export function TodayPage() {
       </header>
 
       <div className="mx-auto max-w-sm px-2 sm:px-0">
+        {/* Date Navigation & Synchronization Bar */}
+        <div className="flex items-center justify-between gap-2 mb-2 px-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            aria-label="Предыдущий день"
+            onClick={() => shiftSelectedDate(-1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="text-center min-w-0">
+            <p className="text-xs font-semibold text-text truncate">
+              {isViewingToday ? "Сегодня · " : ""}{format(targetDate, "d MMMM, EEEE", { locale: localeRu })}
+            </p>
+            {!isViewingToday && (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(todayIso())}
+                className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+              >
+                Вернуться к сегодняшнему дню
+              </button>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            aria-label="Следующий день"
+            onClick={() => shiftSelectedDate(1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
         <CycleRing prediction={prediction} />
         <div className="text-center my-2.5">
           <p className="text-sm text-muted font-medium">{periodStatusText}</p>
@@ -154,7 +198,7 @@ export function TodayPage() {
       </div>
 
       <section className="space-y-2 max-w-sm mx-auto w-full">
-        <Button className="w-full soft-pulse min-h-12 text-sm font-semibold rounded-2xl" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod() : startPeriod())}>
+        <Button className="w-full soft-pulse min-h-12 text-sm font-semibold rounded-2xl" variant={periodActive ? "secondary" : "primary"} onClick={() => void (periodActive ? endPeriod(selectedDate) : startPeriod(selectedDate))}>
           {periodActive ? "Закончились месячные" : "Начались месячные"}
         </Button>
         <div className="grid grid-cols-3 gap-2">

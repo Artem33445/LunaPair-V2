@@ -214,7 +214,6 @@ export function CalendarPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
               className="h-8 px-3 text-xs font-semibold rounded-xl border-coral/40 bg-coral/10 text-coral hover:bg-coral/20 active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
               onClick={() => setPeriodStartModalOpen(true)}
             >
@@ -224,7 +223,6 @@ export function CalendarPage() {
             {relevantCycle && (
               <Button
                 variant="outline"
-                size="sm"
                 className="h-8 px-3 text-xs font-semibold rounded-xl border-primary/40 bg-primarySoft/60 text-primary hover:bg-primarySoft active:scale-[0.98] transition-all flex items-center gap-1.5 shadow-sm"
                 onClick={() => setPeriodEndModalOpen(true)}
               >
@@ -433,6 +431,7 @@ export function CalendarPage() {
 
       {periodStartModalOpen ? (
         <PeriodStartModal
+          key={lastInteractedDate || selectedDate || relevantCycle?.startDate || format(today, "yyyy-MM-dd")}
           currentCycle={relevantCycle}
           initialDate={lastInteractedDate || selectedDate || relevantCycle?.startDate || format(today, "yyyy-MM-dd")}
           periodLength={profile?.averagePeriodLength ?? 5}
@@ -448,6 +447,7 @@ export function CalendarPage() {
 
       {periodEndModalOpen && relevantCycle ? (
         <PeriodEndModal
+          key={initialEndDate}
           currentCycle={relevantCycle}
           initialEndDate={initialEndDate}
           lastInteractedDate={lastInteractedDate}
@@ -515,10 +515,6 @@ function PeriodStartModal({
   const [chosenDate, setChosenDate] = useState(initialDate);
   const [saving, setSaving] = useState(false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
-
-  useEffect(() => {
-    setChosenDate(initialDate);
-  }, [initialDate]);
 
   const previewStartDate = parseISO(chosenDate);
   const validDate = !Number.isNaN(previewStartDate.getTime());
@@ -669,10 +665,6 @@ function PeriodEndModal({
   const [chosenEndDate, setChosenEndDate] = useState(initialEndDate);
   const [saving, setSaving] = useState(false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
-
-  useEffect(() => {
-    setChosenEndDate(initialEndDate);
-  }, [initialEndDate]);
 
   const startParsed = parseISO(currentCycle.startDate);
   const endParsed = parseISO(chosenEndDate);

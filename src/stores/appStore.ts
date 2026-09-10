@@ -649,8 +649,18 @@ export const useAppStore = create<AppState>((set, get) => ({
         periodLength: newPeriodLength,
         updatedAt: now()
       };
-      const next = allCycles.map((cycle) => (cycle.id === targetCycle.id ? updated : cycle));
-      await getRepositories(get().authUser?.uid).cycles.upsert(updated);
+
+      // Clean up conflicting cycles within 21 days (same cycle window)
+      const remainingCycles = allCycles.filter((c) => {
+        if (c.id === targetCycle.id) return false;
+        const diff = Math.abs(differenceInCalendarDays(parseISO(c.startDate), parseISO(targetCycle.startDate)));
+        if (diff <= 21) return false;
+        return true;
+      });
+
+      const next = deriveCycleLengths([...remainingCycles, updated]);
+      await getRepositories(get().authUser?.uid).cycles.clear();
+      await getRepositories(get().authUser?.uid).cycles.bulkPut(next);
       set({ cycles: next, toast: "Окончание месячных сохранено" });
     } catch (e: any) {
       console.error("Error ending period:", e);
