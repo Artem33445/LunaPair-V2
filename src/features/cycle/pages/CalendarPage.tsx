@@ -52,17 +52,27 @@ export function CalendarPage() {
   const initialEndDate = useMemo(() => {
     if (!relevantCycle) return format(today, "yyyy-MM-dd");
     const todayStr = format(today, "yyyy-MM-dd");
-    // Prioritize the date the user entered or clicked last, provided it's >= cycle.startDate
-    if (lastInteractedDate && lastInteractedDate >= relevantCycle.startDate) {
-      return lastInteractedDate;
-    }
-    if (selectedDate && selectedDate >= relevantCycle.startDate) {
+
+    // 1. If user clicked a day on calendar strictly after cycle start:
+    if (selectedDate && selectedDate > relevantCycle.startDate) {
       return selectedDate;
     }
-    if (todayStr >= relevantCycle.startDate) {
+    if (lastInteractedDate && lastInteractedDate > relevantCycle.startDate) {
+      return lastInteractedDate;
+    }
+
+    // 2. If today is between startDate and endDate (ongoing period):
+    if (todayStr >= relevantCycle.startDate && (!relevantCycle.endDate || todayStr <= relevantCycle.endDate)) {
       return todayStr;
     }
-    return relevantCycle.endDate || relevantCycle.startDate;
+
+    // 3. If there is a planned endDate:
+    if (relevantCycle.endDate && relevantCycle.endDate >= relevantCycle.startDate) {
+      return relevantCycle.endDate;
+    }
+
+    // 4. Fallback to today if >= startDate, otherwise startDate
+    return todayStr >= relevantCycle.startDate ? todayStr : relevantCycle.startDate;
   }, [relevantCycle, lastInteractedDate, selectedDate, today]);
 
   const days = useMemo(() => {
@@ -430,7 +440,7 @@ export function CalendarPage() {
           onSave={async (newDate) => {
             await updatePeriodStartDate(newDate, relevantCycle?.id);
             setLastInteractedDate(newDate);
-            setSelectedDate(newDate);
+            setSelectedDate(undefined);
             setMonth(startOfMonth(parseISO(newDate)));
           }}
         />
@@ -445,7 +455,7 @@ export function CalendarPage() {
           onSave={async (newEndDate) => {
             await endPeriod(newEndDate, relevantCycle.id);
             setLastInteractedDate(newEndDate);
-            setSelectedDate(newEndDate);
+            setSelectedDate(undefined);
           }}
         />
       ) : null}
@@ -739,24 +749,15 @@ function PeriodEndModal({
             />
             {/* Quick shortcuts */}
             <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 px-2.5 text-xs rounded-xl"
-                onClick={() => setChosenEndDate(todayStr >= currentCycle.startDate ? todayStr : currentCycle.startDate)}
-              >
-                Сегодня ({format(new Date(), "d MMM", { locale: localeRu })})
-              </Button>
-              {lastInteractedDate && lastInteractedDate >= currentCycle.startDate && lastInteractedDate !== todayStr && (
+              {todayStr >= currentCycle.startDate && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2.5 text-xs rounded-xl border-primary/40 text-primary font-medium"
-                  onClick={() => setChosenEndDate(lastInteractedDate)}
+                  className="h-7 px-2.5 text-xs rounded-xl"
+                  onClick={() => setChosenEndDate(todayStr)}
                 >
-                  Выбранный день ({format(parseISO(lastInteractedDate), "d MMM", { locale: localeRu })})
+                  Сегодня ({format(new Date(), "d MMM", { locale: localeRu })})
                 </Button>
               )}
               {currentCycle.endDate && currentCycle.endDate >= currentCycle.startDate && currentCycle.endDate !== chosenEndDate && (
@@ -770,6 +771,26 @@ function PeriodEndModal({
                   По плану ({format(parseISO(currentCycle.endDate), "d MMM", { locale: localeRu })})
                 </Button>
               )}
+              {lastInteractedDate && lastInteractedDate > currentCycle.startDate && lastInteractedDate !== todayStr && lastInteractedDate !== currentCycle.endDate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2.5 text-xs rounded-xl border-primary/40 text-primary font-medium"
+                  onClick={() => setChosenEndDate(lastInteractedDate)}
+                >
+                  Выбранный день ({format(parseISO(lastInteractedDate), "d MMM", { locale: localeRu })})
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs rounded-xl text-muted"
+                onClick={() => setChosenEndDate(currentCycle.startDate)}
+              >
+                1 день ({format(startParsed, "d MMM", { locale: localeRu })})
+              </Button>
             </div>
           </div>
 
@@ -779,8 +800,11 @@ function PeriodEndModal({
               <p className="text-xs text-text/90 leading-relaxed">
                 Фактическая длительность составит: <strong>{actualLength} {pluralDays(actualLength)}</strong>.
               </p>
+              <p className="text-xs text-text/85">
+                Красным будут отмечены дни с <strong>{format(startParsed, "d MMMM", { locale: localeRu })}</strong> по <strong>{format(endParsed, "d MMMM", { locale: localeRu })}</strong> (включительно).
+              </p>
               <p className="text-xs text-muted">
-                Красная подсветка после <strong>{format(endParsed, "d MMMM", { locale: localeRu })}</strong> будет сразу снята.
+                После <strong>{format(endParsed, "d MMMM", { locale: localeRu })}</strong> красная подсветка выключается. Счётчик дней цикла продолжается от первого дня ({format(startParsed, "d MMMM", { locale: localeRu })}).
               </p>
             </div>
           ) : (

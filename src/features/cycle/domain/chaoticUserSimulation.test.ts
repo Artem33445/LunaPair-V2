@@ -106,6 +106,47 @@ describe("Chaotic User Actions Simulation (Period Management & Error Handling)",
     expect(getCalendarDayInfo("2026-09-08", cycles, 28, 5).phase).toBe("follicular");
   });
 
+  it("exact user scenario: period started on 7th, ends on 10th -> days 7, 8, 9, 10 are ALL red, and cycle counts from 7th", async () => {
+    const store = useAppStore.getState();
+
+    // 1. User sets start date to 7th (planned 5 days: 7th to 11th)
+    await store.updatePeriodStartDate("2026-09-07");
+    let cycles = useAppStore.getState().cycles;
+    expect(cycles[0].startDate).toBe("2026-09-07");
+    expect(cycles[0].endDate).toBe("2026-09-11");
+
+    // 2. User marks that period ended on 10th
+    await store.endPeriod("2026-09-10", cycles[0].id);
+    cycles = useAppStore.getState().cycles;
+
+    const cycle = cycles[0];
+    expect(cycle.startDate).toBe("2026-09-07");
+    expect(cycle.endDate).toBe("2026-09-10");
+    expect(cycle.periodLength).toBe(4);
+
+    // 3. Days 7, 8, 9, 10 MUST ALL BE RED
+    expect(getCalendarDayInfo("2026-09-07", cycles, 28, 5).isActualPeriod).toBe(true);
+    expect(getCalendarDayInfo("2026-09-08", cycles, 28, 5).isActualPeriod).toBe(true);
+    expect(getCalendarDayInfo("2026-09-09", cycles, 28, 5).isActualPeriod).toBe(true);
+    expect(getCalendarDayInfo("2026-09-10", cycles, 28, 5).isActualPeriod).toBe(true);
+
+    // 4. Day 11 must NOT be red
+    expect(getCalendarDayInfo("2026-09-11", cycles, 28, 5).isActualPeriod).toBe(false);
+    expect(getCalendarDayInfo("2026-09-11", cycles, 28, 5).phase).toBe("follicular");
+
+    // 5. Cycle day MUST count from the first day (7th), NOT from end (10th)
+    expect(getCalendarDayInfo("2026-09-07", cycles, 28, 5).cycleDay).toBe(1);
+    expect(getCalendarDayInfo("2026-09-08", cycles, 28, 5).cycleDay).toBe(2);
+    expect(getCalendarDayInfo("2026-09-09", cycles, 28, 5).cycleDay).toBe(3);
+    expect(getCalendarDayInfo("2026-09-10", cycles, 28, 5).cycleDay).toBe(4);
+    expect(getCalendarDayInfo("2026-09-15", cycles, 28, 5).cycleDay).toBe(9); // 15 - 7 + 1 = 9
+
+    // 6. Next cycle prediction is computed from the first day (7th + 28 = Oct 5), NOT from the end
+    const prediction = predictCycle(cycles, new Date("2026-09-10T12:00:00"), 28, 5);
+    expect(prediction.cycleDay).toBe(4);
+    expect(prediction.predictedNextPeriodStart).toBe("2026-10-05");
+  });
+
   it("safely handles chaotic rapid clicks and conflicting duplicate entries", async () => {
     const store = useAppStore.getState();
 
