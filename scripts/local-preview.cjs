@@ -14,13 +14,41 @@ const types = {
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml; charset=utf-8",
-  ".webmanifest": "application/manifest+json; charset=utf-8"
+  ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".png": "image/png",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8"
 };
 
-function send(response, status, body, type = "text/plain; charset=utf-8") {
+const zlib = require("node:zlib");
+
+function send(request, response, status, body, type = "text/plain; charset=utf-8", isImmutable = false) {
+  const acceptEncoding = request.headers["accept-encoding"] || "";
+  const isCompressible = /text|javascript|json|svg/.test(type);
+
+  if (isCompressible && acceptEncoding.includes("gzip")) {
+    zlib.gzip(body, (err, compressed) => {
+      if (err) {
+        response.writeHead(status, {
+          "Content-Type": type,
+          "Cache-Control": isImmutable ? "public, max-age=31536000, immutable" : "no-cache"
+        });
+        response.end(body);
+        return;
+      }
+      response.writeHead(status, {
+        "Content-Type": type,
+        "Content-Encoding": "gzip",
+        "Cache-Control": isImmutable ? "public, max-age=31536000, immutable" : "no-cache"
+      });
+      response.end(compressed);
+    });
+    return;
+  }
+
   response.writeHead(status, {
     "Content-Type": type,
-    "Cache-Control": "no-store"
+    "Cache-Control": isImmutable ? "public, max-age=31536000, immutable" : "no-cache"
   });
   response.end(body);
 }
@@ -34,10 +62,11 @@ const server = http.createServer((request, response) => {
 
   fs.readFile(filePath, (error, data) => {
     if (error) {
-      send(response, 500, "Не удалось открыть сборку LunaPair.");
+      send(request, response, 500, "Не удалось открыть сборку LunaPair.");
       return;
     }
-    send(response, 200, data, types[path.extname(filePath)] || "application/octet-stream");
+    const isAsset = cleanPath.startsWith("assets/");
+    send(request, response, 200, data, types[path.extname(filePath)] || "application/octet-stream", isAsset);
   });
 });
 
