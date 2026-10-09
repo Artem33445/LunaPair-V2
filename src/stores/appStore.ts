@@ -10,16 +10,13 @@ import type {
   ThemePreference,
   UserRole
 } from "../types";
-import { User } from "firebase/auth";
+import type { User } from "firebase/auth";
 import { createDemoData, defaultSharing } from "../features/cycle/domain/demoData";
 import { getRepositories } from "../db/repositories";
-import { migrateLocalToFirebaseIfNeeded } from "../services/migrationService";
 import { createBackup } from "../services/exportService";
 import { parseBackup } from "../services/importService";
 import { id, todayIso } from "../lib/utils";
 import { normalizePartnerSharing } from "../features/partner/domain/partnerPermissions";
-import { onSnapshot, doc } from "firebase/firestore";
-import { db, logout } from "../lib/firebase";
 
 const iso = (date: Date) => formatISO(date, { representation: "date" });
 
@@ -95,7 +92,21 @@ function deriveCycleLengths(cycles: CycleEntry[]) {
     });
 }
 
+function getCachedProfile(): AppProfile | undefined {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("lunapair-cached-profile") : null;
+    return raw ? (JSON.parse(raw) as AppProfile) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const initialCachedProfile = getCachedProfile();
+
 async function persistAll(profile: AppProfile, cycles: CycleEntry[], logs: DailyLog[]) {
+  try {
+    localStorage.setItem("lunapair-cached-profile", JSON.stringify(profile));
+  } catch {}
   await getRepositories(useAppStore.getState().authUser?.uid).profile.save(profile);
   await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
   await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
@@ -107,18 +118,14 @@ function canWriteAsTracker(profile: AppProfile | undefined) {
   return profile?.role !== "partner";
 }
 
-function generateSixDigitCode() {
-  return `${Math.floor(100000 + Math.random() * 900000)}`;
-}
-
 export const useAppStore = create<AppState>((set, get) => ({
   authUser: undefined,
-  profile: undefined,
+  profile: initialCachedProfile,
   trackerProfile: undefined,
   cycles: [],
   dailyLogs: [],
   partnerConnection: undefined,
-  loading: true,
+  loading: !initialCachedProfile,
   _unsubscribers: [],
 
   setAuthUser: async (user) => {
@@ -130,6 +137,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (user) {
       set({ loading: true });
       try {
+        const { migrateLocalToFirebaseIfNeeded } = await import("../services/migrationService");
         await migrateLocalToFirebaseIfNeeded(user.uid);
         await get().hydrate();
         
@@ -177,6 +185,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         // Resume listening to pending invite if exists
         if (myProfile && canWriteAsTracker(myProfile) && myProfile.partnerInviteCode && !myProfile.partnerInviteConfirmed) {
+          const [{ onSnapshot, doc }, { db }] = await Promise.all([
+            import("firebase/firestore"),
+            import("../lib/firebase")
+          ]);
           const unsubInvite = onSnapshot(doc(db, "invites", myProfile.partnerInviteCode), async (snap: any) => {
             if (snap.exists() && snap.data().partnerUid) {
               const timestamp = now();
@@ -213,11 +225,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   hydrate: async () => {
-    set({ loading: true, error: undefined });
+    if (!get().profile) {
+      set({ loading: true, error: undefined });
+    }
     try {
       const uid = get().authUser?.uid;
       const myRepos = getRepositories(uid);
       const profile = await myRepos.profile.get();
+      if (profile) {
+        try {
+          localStorage.setItem("lunapair-cached-profile", JSON.stringify(profile));
+        } catch {}
+      }
       
       let targetUid = uid;
       if (uid && profile?.role === "partner") {
@@ -373,6 +392,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       await getRepositories(get().authUser?.uid).profile.save(updated as AppProfile);
       
       // Listen for partner connection
+      const [{ onSnapshot, doc }, { db }] = await Promise.all([
+        import("firebase/firestore"),
+        import("../lib/firebase")
+      ]);
       const unsub = onSnapshot(doc(db, "invites", code), async (snap: any) => {
         if (snap.exists() && snap.data().partnerUid) {
           // Partner has connected!
@@ -824,7 +847,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         repos.partnerConnection.clear().catch(() => {})
       ]);
     }
-    await logout().catch(() => {});
+    try {
+      const { logout } = await import("../lib/firebase");
+      await logout();
+    } catch {
+      // offline or no firebase
+    }
     clearLunaPairBrowserState();
     set({
       profile: undefined,

@@ -48,11 +48,42 @@ export default defineConfig({
         skipWaiting: true,
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-        runtimeCaching: [],
+        globIgnores: ["**/vendor-firebase-*.js", "**/StatsPage-*.js"],
+        runtimeCaching: [
+          {
+            urlPattern: /.*vendor-firebase.*\.js$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "firebase-runtime-cache"
+            }
+          },
+          {
+            urlPattern: /.*StatsPage.*\.js$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "stats-runtime-cache"
+            }
+          }
+        ],
         maximumFileSizeToCacheInBytes: 4000000
       }
     })
   ],
+  build: {
+    target: "es2022",
+    modulePreload: false,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("firebase") || id.includes("@firebase") || id.includes("firebaseRepositories")) {
+            return "vendor-firebase";
+          }
+        }
+      }
+    }
+  },
   test: {
     environment: "jsdom",
     globals: true,

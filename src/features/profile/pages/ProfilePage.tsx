@@ -7,14 +7,12 @@ import { ru } from "../../../i18n/ru";
 import { downloadBackup } from "../../../services/exportService";
 import { noopSyncService } from "../../../services/syncService";
 import { useAppStore } from "../../../stores/appStore";
-import { logout } from "../../../lib/firebase";
 import { motion } from "framer-motion";
 import type { PartnerAccessLevel, PartnerSharingPreferences, PartnerSupportPreferences, UserRole } from "../../../types";
 import {
   applyPartnerAccessLevel,
   normalizePartnerSharing
 } from "../../partner/domain/partnerPermissions";
-import { loginWithGoogle } from "../../../lib/firebase";
 import { MagicBento, type BentoItem } from "../../../components/ui/MagicBento";
 
 
@@ -134,6 +132,7 @@ export function ProfilePage() {
             {authUser ? (
               <Button variant="outline" onClick={async () => {
                 if (confirm("Выйти из аккаунта Google?")) {
+                  const { logout } = await import("../../../lib/firebase");
                   await logout();
                   window.location.reload();
                 }
@@ -141,10 +140,11 @@ export function ProfilePage() {
             ) : (
               <Button variant="outline" onClick={async () => {
                 try {
+                  const { loginWithGoogle } = await import("../../../lib/firebase");
                   await loginWithGoogle();
                   // appStore will handle auth state change and hydrate from Firebase if needed
                   window.location.reload();
-                } catch (error) {
+                } catch {
                   alert("Не удалось войти через Google");
                 }
               }}>Войти через Google (Синхронизация)</Button>
@@ -169,6 +169,7 @@ export function ProfilePage() {
             {authUser ? (
               <Button variant="outline" onClick={async () => {
                 if (confirm("Выйти из аккаунта Google?")) {
+                  const { logout } = await import("../../../lib/firebase");
                   await logout();
                   window.location.href = "/";
                 }
