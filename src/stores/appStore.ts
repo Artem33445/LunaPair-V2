@@ -92,7 +92,21 @@ function deriveCycleLengths(cycles: CycleEntry[]) {
     });
 }
 
+function getCachedProfile(): AppProfile | undefined {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("lunapair-cached-profile") : null;
+    return raw ? (JSON.parse(raw) as AppProfile) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const initialCachedProfile = getCachedProfile();
+
 async function persistAll(profile: AppProfile, cycles: CycleEntry[], logs: DailyLog[]) {
+  try {
+    localStorage.setItem("lunapair-cached-profile", JSON.stringify(profile));
+  } catch {}
   await getRepositories(useAppStore.getState().authUser?.uid).profile.save(profile);
   await getRepositories(useAppStore.getState().authUser?.uid).cycles.clear();
   await getRepositories(useAppStore.getState().authUser?.uid).cycles.bulkPut(cycles);
@@ -106,12 +120,12 @@ function canWriteAsTracker(profile: AppProfile | undefined) {
 
 export const useAppStore = create<AppState>((set, get) => ({
   authUser: undefined,
-  profile: undefined,
+  profile: initialCachedProfile,
   trackerProfile: undefined,
   cycles: [],
   dailyLogs: [],
   partnerConnection: undefined,
-  loading: true,
+  loading: !initialCachedProfile,
   _unsubscribers: [],
 
   setAuthUser: async (user) => {
@@ -211,11 +225,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   hydrate: async () => {
-    set({ loading: true, error: undefined });
+    if (!get().profile) {
+      set({ loading: true, error: undefined });
+    }
     try {
       const uid = get().authUser?.uid;
       const myRepos = getRepositories(uid);
       const profile = await myRepos.profile.get();
+      if (profile) {
+        try {
+          localStorage.setItem("lunapair-cached-profile", JSON.stringify(profile));
+        } catch {}
+      }
       
       let targetUid = uid;
       if (uid && profile?.role === "partner") {

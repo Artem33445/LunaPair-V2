@@ -6,7 +6,7 @@ const root = path.resolve(__dirname, "..", "dist");
 const portArg = process.argv.indexOf("--port");
 const hostArg = process.argv.indexOf("--host");
 const port = Number((portArg >= 0 && process.argv[portArg + 1]) || process.env.PORT || 5173);
-const host = (hostArg >= 0 && process.argv[hostArg + 1]) || process.env.HOST || "127.0.0.1";
+const host = (hostArg >= 0 && process.argv[hostArg + 1]) || process.env.HOST || "0.0.0.0";
 
 const types = {
   ".html": "text/html; charset=utf-8",

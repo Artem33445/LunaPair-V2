@@ -21,7 +21,7 @@ const AssistantPage = lazy(() => import("../features/assistant/pages/AssistantPa
 
 export function App() {
   const { hydrate, loading, error, profile, setAuthUser } = useAppStore();
-  const [booted, setBooted] = useState(false);
+  const [booted, setBooted] = useState(() => Boolean(profile));
   useTheme(profile?.theme);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export function App() {
     };
   }, [hydrate, setAuthUser]);
 
-  if (!booted || loading) {
+  if ((!booted || loading) && !profile) {
     return (
       <main className="app-safe-area flex min-h-dvh items-center justify-center py-5">
         <Card className="w-full max-w-sm space-y-4 text-center">
